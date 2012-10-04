@@ -135,6 +135,12 @@ public class TestClass {
         }
     }
 
+    static testmethod void testIsTranslatableField() {
+        System.assert(SchemaManager.isTranslatableField(Account.sObjectType, 'RecordType.Name'), 'Account.RecordType.Name is translatable');
+        System.assert(SchemaManager.isTranslatableField(Account.sObjectType, 'Industry'), 'Account.Industry is translatable');
+        System.assert(!SchemaManager.isTranslatableField(Account.sObjectType, 'Name'), 'Account.Name is not translatable');
+    }
+
     static testmethod void testGetUser() {
         Map<String,Object> user = AppController.getUser();
         System.assert(user != null && user.size() > 3,

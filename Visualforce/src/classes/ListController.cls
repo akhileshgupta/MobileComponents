@@ -101,11 +101,23 @@ public class ListController extends SObjectController {
 
         Set<String> fieldsToQuery = new Set<String>();
         fieldsToQuery.add('id');
-        if (SchemaManager.isFieldAccessible(descInfo.getSobjectType(), getConfig().labelField))
-            fieldsToQuery.add(getConfig().labelField);
+        if (SchemaManager.isFieldAccessible(descInfo.getSobjectType(), getConfig().labelField)) {
+            if (SchemaManager.isTranslatableField(descInfo.getSobjectType(), getConfig().labelField)) {
+                fieldsToQuery.add('toLabel(' + getConfig().labelField + ')');
+            } else {
+                fieldsToQuery.add(getConfig().labelField);
+            }
+        }
 
-        if (SchemaManager.isFieldAccessible(descInfo.getSobjectType(), getConfig().subLabelField))
-            fieldsToQuery.add(getConfig().subLabelField);
+        if (SchemaManager.isFieldAccessible(descInfo.getSobjectType(), getConfig().subLabelField)) {
+            if (SchemaManager.isTranslatableField(descInfo.getSobjectType(), getConfig().subLabelField)) {
+                System.debug('TRANSLATING SUBLABEL ' + getConfig().subLabelField);
+                fieldsToQuery.add('toLabel(' + getConfig().subLabelField + ')');
+            } else {
+                System.debug('NOT TRANSLATING SUBLABEL ' + getConfig().subLabelField);
+                fieldsToQuery.add(getConfig().subLabelField);
+            }
+        }
 
         if (SchemaManager.isFieldAccessible(descInfo.getSobjectType(), getConfig().sortByField)) {
             fieldsToQuery.add(getConfig().sortByField);

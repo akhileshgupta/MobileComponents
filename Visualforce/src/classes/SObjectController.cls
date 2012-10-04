@@ -153,7 +153,15 @@ public with sharing abstract class SObjectController extends BaseConfigControlle
         
         List<String> fieldsList = new List<String>();
         for (String field : fieldsToQuery) {
-            if(isFieldAccessible(field)) fieldsList.add(field);
+            if(isFieldAccessible(field)) {
+                if (SchemaManager.isTranslatableField(this.getDescribe().getSObjectType(), field)) {
+                    System.debug('TRANSLATING ' + field);
+                    fieldsList.add('toLabel(' + field + ')');
+                } else {
+                    System.debug('NOT TRANSLATING ' + field);
+                    fieldsList.add(field);
+                }
+            }
         }
         soql += AppUtil.createCSVFromList(fieldsList);
 

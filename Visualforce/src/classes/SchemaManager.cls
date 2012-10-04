@@ -91,6 +91,18 @@ public with sharing class SchemaManager  {
         return (fieldDesc.getType() == Schema.DisplayType.Reference);
     }
 
+    public static boolean isTranslatableField(SObjectType objType, String fieldName) {
+        if (fieldName.toLowerCase() == 'recordtype.name') {
+            return true;
+        }
+        Schema.DescribeFieldResult fieldDesc = getFieldDescribe(objType, fieldName);
+        if (fieldName == null || fieldDesc == null) {
+            return false;
+        }
+        return (fieldDesc.getType() == Schema.DisplayType.Picklist
+            || fieldDesc.getType() == Schema.DisplayType.MultiPicklist);
+    }
+
     public static String getNameFieldForReferenceField(SObjectType objType, String fieldName) {
         Schema.DescribeFieldResult fieldDesc = getFieldDescribe(objType, fieldName);
         return getNameFieldForReferenceField(fieldDesc);
