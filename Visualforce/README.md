@@ -1,3 +1,5 @@
+**DEPRECATED**: Being replaced by the [Mobile UI Elements](https://github.com/forcedotcom/MobileComponents/tree/master/HTML5)
+
 # Mobile Components for Visualforce #
 
 Mobile Components for Visualforce is a free, open-source Force.com library to simplify the development of mobile apps. The framework contains lightweight Visualforce UI components that generate cross-platform HTML5 output that runs well on smartphones and tablets. The apps can be deployed in the browser or embedded inside Container from the Salesforce Mobile SDK. 
