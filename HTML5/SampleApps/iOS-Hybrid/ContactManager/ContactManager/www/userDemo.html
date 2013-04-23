@@ -1,0 +1,7 @@
+<div id="user-list" sf-role="list" sf-query="Select id, name, SmallPhotoUrl, Title from User where profileId ='00e30000000cI4O' and IsActive=true limit 20" sf-itemtemplate="userList">
+    <script type="text/x-handlebars" data-template-name="userList">
+        <img {{bindAttr src="SmallPhotoUrl"}}>
+        <h2>{{Name}}</h2>
+        <p>{{Title}}</p>
+    </script>
+</div>
