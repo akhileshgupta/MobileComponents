@@ -5,17 +5,18 @@
         <link rel="stylesheet" href="css/responsive.css"/>
         <link rel="stylesheet" href="css/styles.css"/>
             
-        <script src="js/container/cordova-2.3.0.js"></script>
-        <script src="js/container/SFHybridApp.js"></script>
-        <script src="js/container/SalesforceOAuthPlugin.js"></script>
-        <script src="js/bootconfig.js"></script>
+        <script src="containerjs/cordova-2.3.0.js"></script>
+        <script src="containerjs/SFHybridApp.js"></script>
+        <script src="containerjs/SalesforceOAuthPlugin.js"></script>
+        <script src="containerjs/SFSmartStorePlugin.js"></script>
+        <script src="containerjs/bootconfig.js"></script>
 
-        <script src="js/lib/libs.min.js"></script>
+        <script src="js/libs.min.js"></script>
 
-        <script src="js/lib/forcejs.min.js"></script>
-        <script src="js/lib/force.entity.js"></script>
-        <script src="js/lib/mobile-ui-elements.js"></script>
-        <script src="js/lib/jq-slide.js"></script>
+        <script src="js/forcejs.min.js"></script>
+        <script src="js/force.entity.js"></script>
+        <script src="js/mobile-ui-elements.js"></script>
+        <script src="js/jq-slide.js"></script>
 
         <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width, initial-scale=1">
     </head>
@@ -67,32 +68,17 @@
 
         <script>
             document.addEventListener("deviceready", cordova.require("salesforce/util/bootstrap").onDeviceReady);
-            document.addEventListener("bootstrapStatusEvent", handleStatus);
+            document.addEventListener("bootstrapStatusEvent", function (statusEvent) {
+                if (!statusEvent.isError && statusEvent.code == 1) { SFDC.launch(statusEvent.oauthCredentials); }
+            });
 
-            function handleStatus(statusEvent) {
-                if (!statusEvent.isError) {
-                    SFDC.launch({
-                        accessToken: statusEvent.oauthCredentials.accessToken,
-                        instanceUrl: statusEvent.oauthCredentials.instanceUrl
-                    });
-                    init();
-                }
-            };
-
-            function init() {
-                $(document).on('SFDCReady', function() {
-                    // Apply ratchet list style after rendering of list
-                    SFDC.getViewController('contact-list').on('afterRender', function() { 
-                        this.view.$('ul').addClass('list'); 
-                    });
-
-                    // Apply responsive ui classes to the detail after rendering
-                    SFDC.getViewController('contact-detail').on('afterRender', function() {
-                        responsify('#contact-detail');
-                    });
+            $(document).on('SFDCReady', function() {
+                // Apply ratchet list style after rendering of list
+                SFDC.getViewController('contact-list').on('afterRender', function() { 
+                    this.view.$('ul').addClass('list'); 
                 });
-            }
-            
+            });
+
             $('#contact-list').click(function(event) {
                 SFDC.getViewController('contact-detail').set('record', event.target.id);
                 $('#home').changePage($('#detail').show(), false, function() { $('#home').hide(); });
@@ -106,10 +92,7 @@
             var editView;
             var showEdit = function(event) {
                 editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit');
-                editView.on('didInsertElement', function() { 
-                    responsify('#contact-edit');
-                    $('#edit').addClass('active');
-                });
+                editView.on('didInsertElement', function() { $('#edit').addClass('active'); });
                 return false;
             };
             var saveForm = function(){
@@ -122,16 +105,6 @@
                 $('#edit').removeClass('active');
                 return false;
             };
-
-            var responsify = function(elem) {
-                $(elem).find('.sf-layout-row').addClass('ui-grid-a ui-responsive').each(function() {
-                    var itemCount = 1;
-                    $(this).find('.sf-layout-item').each(function() {
-                        if (itemCount++ % 2 == 0) $(this).addClass('ui-block-b');
-                        else $(this).addClass('ui-block-a');
-                    });
-                });
-            }
         </script>
     </body>
 </html>

@@ -91,17 +91,17 @@
 
 			if (forEdit) {
 				if (fieldType == 'boolean') 
-					html += ('{{view Ember.Checkbox checkedBinding="' + displayField + '"}}');
+					html += ('{{input type=checkbox checked=' + displayField + '}}');
 				else if (fieldType == 'picklist')
 					html += ('{{view Ember.Select contentBinding="view.fieldInfoMap.' + fieldName + '.picklistValues" optionLabelPath="content.label" optionValuePath="content.value" valueBinding="' + displayField + '"}}');
 				else if (fieldType == 'textarea')
-					html += ('{{view Ember.TextArea valueBinding="' + displayField + '"}}');
+					html += ('{{textarea value=' + displayField + '}}');
 				else 
-					html += ('{{view Ember.TextField valueBinding="' + displayField + '" type="' + inputType(fieldType) + '" maxlength="' + fieldInfo.length + '"}}');
+					html += ('{{input value=' + displayField + ' type="' + inputType(fieldType) + '" maxlength="' + fieldInfo.length + '"}}');
 			}
 			else {
 				if (fieldType == 'boolean') 
-					html += ('{{view Ember.Checkbox checkedBinding="' + displayField + '" disabled="true"}}');
+					html += ('{{input type=checkbox checked=' + displayField + ' disabled="true"}}');
 				else if (fieldInfo.htmlFormatted) 
 					html += '{{{' + displayField + '}}}';
 				else html += ('{{fieldDisplay ' + displayField + ' type="' + fieldInfo.type + '"}}');
@@ -118,10 +118,10 @@
 				html += ('<h1 class="sf-layout-section-heading">' + section.heading + '</h1>');
 				// Iterate over layout rows in each section
 				modArray(section.layoutRows).forEach(function(row) {
-					html += '<div class="sf-layout-row">';
+					html += '<div class="sf-layout-row ui-responsive">';
 					// Iterate over layout items in each row
 					modArray(row.layoutItems).forEach(function(item) {
-						html += '<div class="sf-layout-item">';
+						html += '<div class="sf-layout-item' + ((+section.columns > 1) ? ' ui-block' : '') + '">';
 						if (item.placeholder == 'false') {
 							html += ('<div class="sf-layout-item-label">' + item.label + '</div>');
 							var errorHtml = '';
@@ -203,6 +203,12 @@
 			options = _.extend(opts, options);
 			Force.init(options, 'v' + options.apiVersion);
 			sforce.connection.init(options.accessToken, options.instanceUrl + '/services/Soap/u/' + options.apiVersion, options.useProxy);
+			if (navigator.smartstore) {
+				SFDC.dataStore = new Force.StoreCache('sobjects', [{path:'Name', type:"string"}], 'Id');
+				SFDC.metadataStore = new Force.StoreCache('sobjectTypes', [], 'type');
+				SFDC.dataStore.init();
+				SFDC.metadataStore.init();
+			}
 			SFDC.advanceReadiness();
 		},
 		/**
@@ -247,7 +253,7 @@
 		type: null,
 		init: function() {
 			// Instantiate a new instance of Force.SObjectType
-			this._sobjectType = new Force.SObjectType(this.type);
+			this._sobjectType = new Force.SObjectType(this.type, SFDC.metadataStore);
 		},
 		/**
 		  Retrieves the metadata info of the sobject.
@@ -389,7 +395,7 @@
 			}
 
 			//TBD: Add max size option on the list Controller to handle cases of large resultsets.
-			Force.fetchSObjects(config).done(function(resp) {
+			Force.fetchSObjects(config, SFDC.dataStore).done(function(resp) {
 				var processFetchResult = function(records) {
 					populateList(records);
 					if (resp.hasMore() && _self.get('maxsize') > resp.records.length) 
@@ -500,7 +506,7 @@
 			// fetch list from forcetk and populate SOBject model
 			if (_self.ready && _self.record) {
 				_self.set('content', {});
-				Force.syncSObject('read', _self.sobject, _self.record, null, _self._layoutFieldSet.toString())
+				Force.syncSObject('read', _self.sobject, _self.record, null, _self._layoutFieldSet.toString(), false, SFDC.dataStore, "server-first")
 				.done(function(resp) {
 					console.log(JSON.stringify(resp));
 					_self.set('content', resp);
@@ -597,7 +603,7 @@
 					Ember.keys(record).forEach(function(field) {
 						if (typeof record[field] != 'object' && fieldInfoMap[field].updateable) fieldsToSave.push(field);
 					});
-					return Force.syncSObject('update', sobject.type, _self.Id, record, fieldsToSave)
+					return Force.syncSObject('update', sobject.type, _self.Id, record, fieldsToSave, false, SFDC.dataStore, "server-first")
 					.fail(function(xhr) {
 						var viewErrors = {messages: []};
 		                _.each(new Force.RestError(xhr).details, function(detail) {
