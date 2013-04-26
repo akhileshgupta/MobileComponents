@@ -22,72 +22,27 @@
 
 
     <body>
-        <div id="home" data-role="page">
-            <div data-role="header" data-position="fixed" data-tap-toggle="false"><h1>Contacts</h1></div>
-            <div data-role="content">
-                <div id="contact-list" sf-role="list" sf-sobject="Contact"></div>
-            </div>
-        </div>
-
-        <div id="detail" data-role="page">
-            <div data-role="header" data-position="fixed" data-tap-toggle="false">
-                <a href='#home' class='ui-btn-left' data-icon='arrow-l' data-transition="slide" data-direction="reverse" data-iconpos="notext" data-theme="b">Contacts</a>
-                <h1>Details</h1>
-                <a id="showEdit" class='ui-btn-right' data-icon='edit' data-iconpos="notext" data-theme="b">Edit</a>
-            </div>
-            <div data-role="content" data-enhance="false">
-                <div id="contact-detail" sf-role="detail" sf-sobject="Contact"></div>
-            </div>
-        </div>
-
-        <div id="edit" data-role="page">
-            <div data-role="header" data-position="fixed" data-tap-toggle="false">
-                <a id="close" class='ui-btn-left' data-icon='delete' data-transition="slidedown" data-iconpos="notext" data-theme="b">Close</a>
-                <h1>Edit</h1>
-                <a id="save" class='ui-btn-right' data-icon='check' data-transition="slidedown" data-iconpos="notext" data-theme="b">Save</a>
-            </div>
-            <div data-role="content">
-                <div id="contact-edit" data-enhance="false"></div>
-            </div>
-        </div>
-
-
-        <script>
-            $.mobile.ignoreContentEnabled = true;
-            document.addEventListener("deviceready", cordova.require("salesforce/util/bootstrap").onDeviceReady);
-            document.addEventListener("bootstrapStatusEvent", function (statusEvent) {
-                if (!statusEvent.isError && statusEvent.code == 1) { SFDC.launch(statusEvent.oauthCredentials); }
-            });
-
-            $(document).on('SFDCReady', function() {
-                SFDC.getViewController('contact-list').on('afterRender', function() { 
-                    this.view.$('ul').listview();
-                })
-                .on('contentChanged', function() {
-                    this.view.$('ul').listview('refresh');
-                });
-            });
-            
-            $('#contact-list').tap(function(event) {
-                SFDC.getViewController('contact-detail').set('record', event.target.id);
-                jQuery.mobile.changePage( '#detail', {changeHash:false, transition: 'slide' } );
-            });
-
-            var editView, closeForm = function() {
-                jQuery.mobile.changePage( '#detail', { changeHash:false, transition: 'slidedown' } );
-            };
-            $('#showEdit').tap(function(event) {
-                editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit');
-                editView.on('didInsertElement', function() { 
-                    jQuery.mobile.changePage( '#edit', { changeHash:false, transition: 'slideup' } );
-                });
-            });
-            $('#save').tap(function(){
-                editView.save().done(function() {
-                    SFDC.getViewController('contact-detail').fetch().on('contentChanged', closeForm);
-                });
-            });
-            $('#close').tap(closeForm);
-        </script>
+        
+        <div id="contact-list" sf-role="list" sf-sobject="Contact"></div>
+        
+        <!--div id="contact-list" sf-role="detail" sf-sobject="Contact" sf-record="0033000000UL1Hs" sf-fields="FirstName,LastName,Title"></div-->
+        
     </body>
+    
+    
+    <script>
+        document.addEventListener("deviceready", cordova.require("salesforce/util/bootstrap").onDeviceReady);
+        document.addEventListener("bootstrapStatusEvent", function (statusEvent) {
+            if (!statusEvent.isError && statusEvent.code == 1) { SFDC.launch(statusEvent.oauthCredentials); }
+        });
+
+        $(document).on('SFDCReady', function() {
+            SFDC.getViewController('contact-list').on('afterRender', function() { 
+                this.view.$('ul').listview();
+            })
+            .on('contentChanged', function() {
+                this.view.$('ul').listview('refresh');
+            });
+        });
+    </script>
 </html>
