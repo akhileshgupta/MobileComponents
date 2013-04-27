@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		260F2CF2172B4CB100FA77B3 /* lib in CopyFiles */ = {isa = PBXBuildFile; fileRef = 260F2CF1172B4CB100FA77B3 /* lib */; };
 		261CE9B117260B950018481D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 261CE9B017260B950018481D /* Foundation.framework */; };
 		261CE9B317260B950018481D /* MessageUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 261CE9B217260B950018481D /* MessageUI.framework */; };
 		261CE9B517260B950018481D /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 261CE9B417260B950018481D /* UIKit.framework */; };
@@ -57,12 +58,14 @@
 			dstPath = www;
 			dstSubfolderSpec = 7;
 			files = (
+				260F2CF2172B4CB100FA77B3 /* lib in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		260F2CF1172B4CB100FA77B3 /* lib */ = {isa = PBXFileReference; lastKnownFileType = folder; name = lib; path = ../../../../lib; sourceTree = "<group>"; };
 		261CE9AD17260B950018481D /* ContactManager.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ContactManager.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		261CE9B017260B950018481D /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		261CE9B217260B950018481D /* MessageUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MessageUI.framework; path = System/Library/Frameworks/MessageUI.framework; sourceTree = SDKROOT; };
@@ -181,6 +184,7 @@
 		261CE9D017260B950018481D /* ContactManager */ = {
 			isa = PBXGroup;
 			children = (
+				260F2CF1172B4CB100FA77B3 /* lib */,
 				261CEA2917260BBA0018481D /* www */,
 				261CE9F417260B980018481D /* SalesforceHybridSDK.framework */,
 				261CE9F617260B980018481D /* libz.dylib */,
@@ -485,6 +489,7 @@
 				261CEA2817260B990018481D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
