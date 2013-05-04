@@ -9,6 +9,13 @@
     var T = {};
 
     //------------------------- INTERNAL METHODS -------------------------
+    var isOnline = function() {
+        return navigator.onLine || 
+               (typeof navigator.connection != 'undefined' &&
+               navigator.connection.type !== Connection.UNKNOWN &&
+               navigator.connection.type !== Connection.NONE);
+    }
+
     // Utility method to ensure that input object is an array. 
     // If not, wraps the input object into array.
     var modArray = function(obj) {
@@ -199,8 +206,7 @@
 
           Primary method to be invoked for activating the framework 
           and to allow the processing of exiting dom elements.
-         
-          @class SFDC
+
           @method launch
           @param {object} options Object with accessToken, instanceUrl and apiVersion(optional) properties
         */
@@ -212,8 +218,10 @@
             if (navigator.smartstore) {
                 SFDC.dataStore = new Force.StoreCache('sobjects', [{path:'Name', type:"string"}], 'Id');
                 SFDC.metadataStore = new Force.StoreCache('sobjectTypes', [], 'type');
+                SFDC.layoutInfoStore = new Force.StoreCache('layoutInfos', [], 'type');
                 SFDC.dataStore.init();
                 SFDC.metadataStore.init();
+                SFDC.layoutInfoStore.init();
             }
             SFDC.advanceReadiness();
         },
@@ -264,6 +272,7 @@
         id: null,
         type: null,
         init: function() {
+            console.log('initializing sobject type: ' + this.type);
             // Instantiate a new instance of Force.SObjectType
             this._sobjectType = new Force.SObjectType(this.type, SFDC.metadataStore);
         },
@@ -284,6 +293,7 @@
 
           Retrieves the describe info of the sobject.
 
+          @method describe
           @return {jQuery.Promise} A promise object that resolves with the describe result on success.
         */
         describe: function() {
@@ -292,7 +302,7 @@
         },
         /**
           ## SFDC.SObject.getFieldInfoMap
-
+          
           Retrieves the map with field describe infos of the sobject.
 
           @method getFieldInfoMap
@@ -305,31 +315,63 @@
                 describeResult.fields.forEach(function(fieldInfo) {
                     fieldInfoMap[fieldInfo.name] = fieldInfo;
                 });
+                console.log('returning field info map');
                 return fieldInfoMap;
             });
         },
         /**
           ## SFDC.SObject.describeLayout
-
+          
           Retrieves the describe layout info of the sobject.
 
           @method describeLayout
           @return {jQuery.Promise} A promise object that resolves with the describeLayout result on success.
         */
         describeLayout: function() {
-            var _self = this,
-                d = $.Deferred();
+            var _self = this;
 
             if (_self.type && !_self._describeLayoutResult) {
-                sforce.connection.describeLayout(_self.type, null, function(resp) {
-                    _self._describeLayoutResult = resp;
-                    d.resolve(_self._describeLayoutResult);
-                }, function() {
-                    d.reject(arguments);
-                });
-            } else d.resolve(_self._describeLayoutResult);
 
-            return d.promise();
+                var fetchLayoutsFromServer = function() {
+                    var d = $.Deferred();
+
+                    console.log('performing describe layout on server');
+                    sforce.connection.describeLayout(_self.type, null, function(resp) {
+                        d.resolve(resp);
+                    }, function() {
+                        d.reject(arguments);
+                    });
+
+                    return d.promise();
+                }
+
+                var cacheSave = function(describeLayoutResult) {
+                    if (SFDC.layoutInfoStore) {
+                        var layoutRecord = {};
+                        layoutRecord.type = _self.type;
+                        layoutRecord.describeLayoutResult = describeLayoutResult;
+                        return SFDC.layoutInfoStore.save(layoutRecord).then(function() { return describeLayoutResult; });
+                    } else return describeLayoutResult;
+                }
+
+                var fetchFromServerUnlessCached = function(cacheResp) {
+                    if (!cacheResp) {
+                        return fetchLayoutsFromServer()
+                        .then(cacheSave)
+                        .then(function(describeLayoutResult) { return describeLayoutResult; });
+                    } else {
+                        return cacheResp.describeLayoutResult;
+                    }
+                }
+                // Check if offline store defined and then retrieve from store
+                return $.when(SFDC.layoutInfoStore && SFDC.layoutInfoStore.retrieve(_self.type))
+                        .then(fetchFromServerUnlessCached)
+                        .then(function(describeLayoutResult) { 
+                            _self._describeLayoutResult = describeLayoutResult; 
+                            return describeLayoutResult;
+                        });
+                
+            } else return $.when(_self._describeLayoutResult);
         }
     });
 
@@ -402,28 +444,28 @@
         },
         fetch: function() {
             var _self = this,
-                config = {},
-                populateList = function(records) {
-                    var sobjects = [];
-                    records.forEach(function(obj) {
-                        sobjects.push(obj);
-                    });
-                    _self.pushObjects(sobjects);
-                };
+                config = {};
 
             // fetch list from forcetk and populate SOBject model
-            if (_self.query) {
-                config.type = 'soql';
-                config.query = _self.query;
-            } else if (_self.sobject) {
-                config.type = 'mru';
-                config.sobjectType = _self.sobject;
+            if (isOnline()) {
+                if (_self.query) {
+                    config.type = 'soql';
+                    config.query = _self.query;
+                } else if (_self.sobject) {
+                    config.type = 'mru';
+                    config.sobjectType = _self.sobject;
+                }
+            } else if (navigator.smartstore) {
+                config.type = 'cache';
+                config.cacheQuery = navigator.smartstore.buildAllQuerySpec('Id');
             }
 
             //TBD: Add max size option on the list Controller to handle cases of large resultsets.
             Force.fetchSObjects(config, SFDC.dataStore).done(function(resp) {
+                console.log('obtained the results. Adding to the content.' + JSON.stringify(resp));
                 var processFetchResult = function(records) {
-                    populateList(records);
+                    console.log('fetched records. Adding to the collection.');
+                    _self.pushObjects(records);
                     if (resp.hasMore() && _self.get('maxsize') > resp.records.length) 
                         resp.getMore().done(processFetchResult);
                 }
@@ -457,7 +499,7 @@
     });
 
     /**
-      ##SFDC.DetailController
+      ## SFDC.DetailController
 
       Contoller for managing the detail view of an object.
       ```c
@@ -467,7 +509,7 @@
         fields:(Optional) Comma separated list of field names that should only be rendered on the detail page. Default: Renders all fields present on the page layout.
         layout:(Optional) Name of the Handlebar template to specify the layout of the output. Must contain {{yield}} to specify the place where template will be rendered. Default: None
         template:(Optional) Name of the Handlebar template to be used for rendering details of the record. Default: Renders the corresponding page layout.
-    
+
       ### Supported Events:
         afterRender: This event is triggered when the view is added to the DOM.
         contentChanged: This event is triggered when the record details change.
@@ -480,14 +522,18 @@
         execOnceQueue: [],
         renderQueue: [],
         init: function() {
+            console.log('initializing detail controller');
             this._super();
             this.view = Ember.View.create().appendTo(this.parent);
             this.fetchLayouts();
             this.fetch();
         },
+        
         fetchLayouts: function() {
             var _self = this, 
                 sobject;
+
+            console.log('fetching layouts');
 
             // Set to track all the fields to fetch to render layouts
             _self._layoutFieldSet = new Ember.Set();
@@ -531,13 +577,15 @@
                 });
             } else _self.set('ready', true);
         }.observes('sobject'),
+
         fetch: function() {
             var _self = this;
 
+            console.log('fetching record');
             // fetch list from forcetk and populate SOBject model
             if (_self.ready && _self.record) {
                 _self.set('content', {});
-                Force.syncSObject('read', _self.sobject, _self.record, null, _self._layoutFieldSet.toString(), false, SFDC.dataStore, "server-first")
+                Force.syncSObject('read', _self.sobject, _self.record, null, _self._layoutFieldSet.toArray(), false, null, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
                 .done(function(resp) {
                     console.log(JSON.stringify(resp));
                     _self.set('content', resp);
@@ -546,6 +594,7 @@
 
             return this;
         }.observes('record', 'ready'),
+
         renderView: function() {
             var _self = this, 
                 layoutId,
@@ -554,6 +603,8 @@
                     layoutName: _self.layout,
                     templateName: _self.template
                 };
+
+            console.log('rendering view');
 
             if (!_self.ready) return;
 
@@ -577,6 +628,7 @@
 
             return this;
         }.observes('content', 'ready'),
+
         showEdit: function(target) {
             var _self = this,
                 layoutId,
@@ -632,9 +684,12 @@
                 return sobject.getFieldInfoMap().then(function(fieldInfoMap) {
                     var fieldsToSave = [];
                     Ember.keys(record).forEach(function(field) {
-                        if (typeof record[field] != 'object' && fieldInfoMap[field].updateable) fieldsToSave.push(field);
+                        if (field.indexOf('_') != 0 && // Ignore internal cache related fields that start with '_'
+                            typeof record[field] != 'object' && // Ignore any lookup relationship fields
+                            fieldInfoMap[field].updateable) // Ignore any fields that are not editable for current user
+                                fieldsToSave.push(field);
                     });
-                    return Force.syncSObject('update', sobject.type, _self.Id, record, fieldsToSave, false, SFDC.dataStore, "server-first")
+                    return Force.syncSObject('update', sobject.type, _self.Id, record, fieldsToSave, false, null, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
                     .fail(function(xhr) {
                         var viewErrors = {messages: []};
                         _.each(new Force.RestError(xhr).details, function(detail) {
