@@ -4,11 +4,9 @@
         <link rel="stylesheet" href="ratchet/ratchet.css"/>
         <link rel="stylesheet" href="lib/css/responsive.css"/>
         <link rel="stylesheet" href="lib/css/styles.css"/>
-            
+        
         <script src="containerjs/cordova-2.3.0.js"></script>
-        <script src="containerjs/SFHybridApp.js"></script>
-        <script src="containerjs/SalesforceOAuthPlugin.js"></script>
-        <script src="containerjs/SFSmartStorePlugin.js"></script>
+        <script src="containerjs/cordova.force.js"></script>
         <script src="containerjs/bootconfig.js"></script>
 
         <script src="lib/js/libs.min.js"></script>
@@ -20,6 +18,7 @@
 
         <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width, initial-scale=1">
     </head>
+
 
     <body>
         <div id="home" class="absolute">
@@ -41,12 +40,8 @@
                 <div id="contact-detail" sf-role="detail" sf-sobject="Contact" sf-layout="detailLayout">
                     <script type="text/x-handlebars" data-template-name="detailLayout">
                         <header class="page-header--details">
-                            <div class="item-header group">
-                                <hgroup class="item-header-details">
-                                    <h1>{{FirstName}} {{LastName}}</h1>
-                                    <h2>{{Title}}</h2>
-                                </hgroup>
-                            </div>
+                            <h1>{{FirstName}} {{LastName}}</h1>
+                            <h2>{{Title}}</h2>
                         </header>
                         {{yield}}
                     </script>
@@ -67,9 +62,11 @@
 
 
         <script>
-            document.addEventListener("deviceready", cordova.require("salesforce/util/bootstrap").onDeviceReady);
-            document.addEventListener("bootstrapStatusEvent", function (statusEvent) {
-                if (!statusEvent.isError && statusEvent.code == 1) { SFDC.launch(statusEvent.oauthCredentials); }
+            document.addEventListener("deviceready", function () {
+                //Call getAuthCredentials to get the initial session credentials
+                cordova.require("salesforce/plugin/oauth").getAuthCredentials(
+                    function(creds) { SFDC.launch(creds); }, 
+                    function(error) { console.log("Auth failed: " + error); });
             });
 
             $(document).on('SFDCReady', function() {
@@ -95,7 +92,7 @@
                 editView.on('didInsertElement', function() { $('#edit').addClass('active'); });
                 return false;
             };
-            var saveForm = function(){
+            var saveForm = function() {
                 editView.save().done(function() {
                     SFDC.getViewController('contact-detail').fetch().on('contentChanged', closeForm);
                 });

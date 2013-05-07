@@ -216,7 +216,7 @@
             Force.init(options, 'v' + options.apiVersion);
             sforce.connection.init(options.accessToken, options.instanceUrl + '/services/Soap/u/' + options.apiVersion, options.useProxy);
             if (navigator.smartstore) {
-                SFDC.dataStore = new Force.StoreCache('sobjects', [{path:'Name', type:"string"}], 'Id');
+                SFDC.dataStore = new Force.StoreCache('sobjects', [{path:'Name', type:'string'}, {path:'attributes.type', type:'string'}], 'Id');
                 SFDC.metadataStore = new Force.StoreCache('sobjectTypes', [], 'type');
                 SFDC.layoutInfoStore = new Force.StoreCache('layoutInfos', [], 'type');
                 SFDC.dataStore.init();
@@ -439,8 +439,8 @@
             this.view = Ember.View.create().appendTo(this.parent);
 
             // Begin data fetch
-            this.fetch();
             this.renderView();
+            this.fetch();
         },
         fetch: function() {
             var _self = this,
@@ -457,7 +457,7 @@
                 }
             } else if (navigator.smartstore) {
                 config.type = 'cache';
-                config.cacheQuery = navigator.smartstore.buildAllQuerySpec('Id');
+                config.cacheQuery = navigator.smartstore.buildExactQuerySpec('attributes.type', _self.sobject);
             }
 
             //TBD: Add max size option on the list Controller to handle cases of large resultsets.
@@ -485,8 +485,8 @@
             // Trigger an afterRender event once the DOM is updated with new template
             // Eg. Apply the jqm listview properties after that.
             _self.view.one('didInsertElement', function() {
-                Ember.run.scheduleOnce('afterRender', _self, function() {
-                    this.trigger('afterRender');
+                Ember.run(function() {
+                    _self.trigger('afterRender');
                 });
             });
         },
