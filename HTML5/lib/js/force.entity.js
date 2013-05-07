@@ -174,30 +174,33 @@
             var that = this;
             var querySpec = navigator.smartstore.buildExactQuerySpec(this.keyField, key);
             var record = null;
+
+            var hasFieldPath = function(soupElt, path) {
+                var pathElements = path.split(".");
+                var o = soupElt;
+                for (var i = 0; i<pathElements.length; i++) {
+                    var pathElement = pathElements[i];
+                    if (!_.has(o, pathElement)) {
+                        return false;
+                    }
+                    o = o[pathElement];
+                }
+                return true;
+            };
+
             return smartstoreClient.querySoup(this.soupName, querySpec)
                 .then(function(cursor) {
                     if (cursor.currentPageOrderedEntries.length == 1) record = cursor.currentPageOrderedEntries[0];
                     return smartstoreClient.closeCursor(cursor);
                 })
                 .then(function() { 
-                    
-                    if (record != null && fieldlist != null) {
-                        // if the cached record doesn't have all the field we are interested in the return null
-                        if (_.any(fieldlist, function(field) { 
-                            var fieldValue = record;
-                            // Perform a deep test for fields with parent lookups, eg. Contact.Owner.Name
-                            return _.any(field.split('.'), function(field) {
-                                return !_.isObject(fieldValue) 
-                                    || _.isArray(fieldValue) 
-                                    || _.isFunction(fieldValue)
-                                    || _.isUndefined(fieldValue = fieldValue[field]);
-                            });
-                        })) {
-                            console.log("----> In StoreCache:retrieve " + that.soupName + ":" + key + ":in cache but missing some fields");
-                            record = null;
-                        }
+                    // if the cached record doesn't have all the field we are interested in the return null
+                    if (record != null && fieldlist != null && _.any(fieldlist, function(field) { 
+                        return !hasFieldPath(record, field);
+                    })) {
+                        console.log("----> In StoreCache:retrieve " + that.soupName + ":" + key + ":in cache but missing some fields");
+                        record = null;
                     }
-
                     console.log("----> In StoreCache:retrieve " + that.soupName + ":" + key + ":" + (record == null ? "miss" : "hit"));
                     return record;
                 });
@@ -232,17 +235,13 @@
                 + "WHERE {" + this.soupName + ":" + this.keyField + "} "
                 + "IN ('" + _.pluck(records, this.keyField).join("','") + "')";
 
-            console.log('Built smartsql: ' + smartSql);
             var querySpec = navigator.smartstore.buildSmartQuerySpec(smartSql, records.length);
-            console.log('created queryspec for smartsql.');
 
             return smartstoreClient.runSmartQuery(querySpec)
                 .then(function(cursor) {
-                    console.log('----> In callback after smartQuery success');
                     _.each(cursor.currentPageOrderedEntries, function(oldRecord) {
                         oldRecords[oldRecord[that.keyField]] = oldRecord;
                     });
-                    console.log('Fetched records from smartstore. oldRecords.length=' + oldRecords.length);
                     return smartstoreClient.closeCursor(cursor);
                 })
                 .then(function() {
@@ -292,7 +291,7 @@
                             .then(closeCursorIfNeeded)
                             .then(function(c) {
                                 cursor = c;
-                                that.records.pushObjects(cursor.currentPageOrderedEntries);
+                                that.records = _.union(that.records, cursor.currentPageOrderedEntries);
                                 return cursor.currentPageOrderedEntries;
                             });
                         }
@@ -909,7 +908,6 @@
                 .then(function(resp) {
                     //Only do query if the fieldList is provided.
                     if (fieldlist) {
-                        console.log('performing soql for fetching all fields: ' + JSON.stringify(fieldlist));
                         var soql = "SELECT " + fieldlist.join(",") 
                             + " FROM " + sobjectType
                             + " WHERE Id IN ('" + _.pluck(resp.recentItems, "Id").join("','") + "')";
