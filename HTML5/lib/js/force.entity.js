@@ -386,7 +386,7 @@
         // Check first if cache exists.
         // Then save the current instance data to cache.
         var cacheSave = function() {
-            if (that.cache) {
+            if (!wasReadFromCache && that.cache) {
                 var record = {
                     describeResult: that._describeResult, 
                     metadataResult: that._metadataResult
@@ -409,6 +409,7 @@
         // If no describe data exists on the instance, get it from server.
         var serverDescribeUnlessCached = function() { 
             if(!that._describeResult) {
+                wasReadFromCache = false;
                 return forcetkClient.describe(that.sobjectType)
                         .then(function(describeResult) {
                             that._describeResult = describeResult;
@@ -419,6 +420,7 @@
         // If no metadata data exists on the instance, get it from server.
         var serverMetadataUnlessCached = function() { 
             if(!that._metadataResult) {
+                wasReadFromCache = false;
                 return forcetkClient.metadata(that.sobjectType)
                         .then(function(metadataResult) {
                             that._metadataResult = metadataResult;

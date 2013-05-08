@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+    <head>
+        <link rel="stylesheet" href="ratchet/ratchet.css"/>
+        <link rel="stylesheet" href="../../lib/css/responsive.css"/>
+        <link rel="stylesheet" href="../../lib/css/styles.css"/>
+        
+        <script src="../../lib/js/libs.min.js"></script>
+
+        <script src="js/MockCordova.js"></script>
+        <script src="js/MockSmartStore.js"></script>
+        <script src="js/cordova.force.js"></script>
+
+        <script src="../../lib/js/forcejs.min.js"></script>
+        <script src="../../lib/js/force.entity.js"></script>
+        <script src="../../lib/js/mobile-ui-elements.js"></script>
+        <script src="../../lib/js/jq-slide.js"></script>
+
+        <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no, width=device-width, initial-scale=1">
+    </head>
+
+
+    <body>
+        <div id="home" class="absolute">
+            <header class="bar-title">
+              <h1 class="title">Contacts</h1>
+            </header>
+            <div class="content">
+                <div id="contact-list" sf-role="list" sf-sobject="Contact"></div>
+            </div>
+        </div>
+
+        <div id="detail" style="display: none;" class="absolute">
+            <header class="bar-title">
+                <a class="button-prev" onClick="showHome('#detail');">Contacts</a>
+                <h1 class="title">Details</h1>
+                <a class="button" onClick="showEdit();">Edit</a>
+            </header>
+            <div class="content">
+                <div id="contact-detail" sf-role="detail" sf-sobject="Contact" sf-layout="detailLayout">
+                    <script type="text/x-handlebars" data-template-name="detailLayout">
+                        <header class="page-header--details">
+                            <h1>{{FirstName}} {{LastName}}</h1>
+                            <h2>{{Title}}</h2>
+                        </header>
+                        {{yield}}
+                    </script>
+                </div>
+            </div>
+        </div>
+
+        <div id="edit" class="modal">
+            <header class="bar-title">
+                <a class="button" onClick="closeForm();">Close</a>
+                <h1 class="title">Edit</h1>
+                <a class="button" onClick="saveForm();">Save</a>
+            </header>
+            <div class="content">
+                <div id="contact-edit"></div>
+            </div>
+        </div>
+
+
+        <script>
+            mockStore.useSessionStorage();
+            $(function() {
+                SFDC.launch({
+                    accessToken: '<salesforce user session id>',
+                    instanceUrl: '<salesforce org instance url>'
+                });
+            });
+
+            $(document).on('SFDCReady', function() {
+                // Apply ratchet list style after rendering of list
+                SFDC.getViewController('contact-list').on('afterRender', function() { 
+                    this.view.$('ul').addClass('list'); 
+                });
+            });
+
+            $('#contact-list').click(function(event) {
+                SFDC.getViewController('contact-detail').set('record', event.target.id);
+                $('#home').changePage($('#detail').show(), false, function() { $('#home').hide(); });
+            });
+
+            var showHome = function(from) {
+                $(from).changePage($('#home').show(), true, function() { $(from).hide(); });
+                return false;
+            }
+
+            var editView;
+            var showEdit = function(event) {
+                editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit');
+                editView.on('didInsertElement', function() { $('#edit').addClass('active'); });
+                return false;
+            };
+            var saveForm = function() {
+                editView.save().done(function() {
+                    SFDC.getViewController('contact-detail').fetch().one('contentChanged', closeForm);
+                });
+                return false;
+            };
+            var closeForm = function() {
+                $('#edit').removeClass('active');
+                return false;
+            };
+        </script>
+    </body>
+</html>
