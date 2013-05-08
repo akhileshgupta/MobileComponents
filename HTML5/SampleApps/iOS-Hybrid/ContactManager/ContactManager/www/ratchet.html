@@ -94,7 +94,7 @@
             };
             var saveForm = function() {
                 editView.save().done(function() {
-                    SFDC.getViewController('contact-detail').fetch().on('contentChanged', closeForm);
+                    SFDC.getViewController('contact-detail').fetch().one('contentChanged', closeForm);
                 });
                 return false;
             };
