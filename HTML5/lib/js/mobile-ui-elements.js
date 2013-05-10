@@ -376,6 +376,114 @@
     });
 
     /**
+      ## SFDC.SObjectModel
+
+      An instance of SFDC.SObjectModel provides utility methods 
+      for performing standard CRUD operations on any SObject record.
+    */
+    SFDC.SObjectModel = Ember.ObjectProxy.extend({
+        Id: null,
+        type: null,
+        attributes: null,
+        init: function() {
+            this.set('content', {});
+        },
+        
+        fetch: function(fields) {
+            var _self = this;
+            var fieldsToFetch = _.union(_self.get('fields'), fields || []);
+            return Force.syncSObject('read', _self.type, _self.Id, null, fieldsToFetch, false, null, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
+            .then(function(record) {
+                _self.setProperties(record);
+            });
+        },
+
+        save: function(attributes) {
+            var _self = this;
+            var fieldsToSave = _.keys(attributes);
+            var operation = _self.Id ? 'update' : 'create';
+
+            return Force.syncSObject(operation, _self.type, _self.Id, attributes, fieldsToSave, false, true, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
+            .then(function(result) {
+                _self.setProperties(result);
+            });
+        },
+
+        delete: function() {
+            // To be implemented
+        },
+        
+        fields: function() {
+            var fields = ['Id'];
+            var getKey = function(object, prefix) {
+                if (_.isObject(object) && !_.isArray(object)) {
+                    prefix = prefix ? (prefix + '.') : '';
+                    _.each(object, function(value, key) {
+                        if (value && key != 'attributes' && key.indexOf('_') != 0) 
+                            getKey(value, prefix + key);
+                    });
+                } else fields.push(prefix);
+            }
+
+            getKey(this.get('content'));
+
+            return fields;
+        }.property('content').volatile()
+    });
+
+    /**
+      ## SFDC.SObjectManager
+
+      An instance of SFDC.SObjectManager provides utility methods for fetching SObject records and caching them in-memory.
+    */
+    SFDC.SObjectManager = (function() {
+        var cachedObjects = new Ember.Set();
+        return {
+            fetch: function(type, id, fields) {
+                var model = cachedObjects.findProperty('Id', id);
+                if (_.isUndefined(model)) {
+                    model = SObjectModel.create({type: type, Id: id});
+                    cachedObjects.push(model);
+                }
+                model.fetch(fields);
+                return model;
+            },
+            fetchMultiple: function(config) {
+
+                return Force.fetchSObjects(config, SFDC.dataStore).then(function(result) {
+
+                    var parseResult = function(records) {
+                        var models = [];
+                        if (records && records.length) {
+                            var model, type;
+
+                            records.forEach(function(record) {
+                                model = cachedObjects.findProperty('Id', record.Id);
+                                if (_.isUndefined(model) && !_.isUndefined(record.Id)) {
+                                    model = SFDC.SObjectModel.create({type: record.attributes.type, Id: record.Id});
+                                    cachedObjects.push(model);
+                                }
+                                model.setProperties(record);
+                                models.push(model);
+                            });
+                        }
+                        return models;
+                    };
+
+                    return _.extend({}, result, {
+                        records: parseResult(result.records),
+                        getMore: function() {
+                            return result.getMore().then(function(records){
+                                return parseResult(records);
+                            });
+                        }
+                    });
+                });
+            }
+        }
+    })();
+
+    /**
       ## SFDC.ApplicationRoute
 
       The ApplicationRoute definition for the SFDC Ember app.
@@ -461,7 +569,7 @@
             }
 
             //TBD: Add max size option on the list Controller to handle cases of large resultsets.
-            Force.fetchSObjects(config, SFDC.dataStore).done(function(resp) {
+            SFDC.SObjectManager.fetchMultiple(config).done(function(resp) {
                 console.log('obtained the results. Adding to the content.' + JSON.stringify(resp));
                 var processFetchResult = function(records) {
                     console.log('fetched records. Adding to the collection.');
@@ -584,12 +692,7 @@
             console.log('fetching record');
             // fetch list from forcetk and populate SOBject model
             if (_self.ready && _self.record) {
-                _self.set('content', {});
-                Force.syncSObject('read', _self.sobject, _self.record, null, _self._layoutFieldSet.toArray(), false, null, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
-                .done(function(resp) {
-                    console.log(JSON.stringify(resp));
-                    _self.set('content', resp);
-                }).fail(function() { console.log(arguments); });
+                _self.set('content', SFDC.SObjectManager.fetch(_self.sobject, _self.record, _self._layoutFieldSet.toArray()));
             }
 
             return this;
@@ -634,7 +737,7 @@
                 layoutId,
                 viewProperties = {
                     fieldInfoMap: _self._fieldInfoMap,
-                    context: Ember.copy(_self.get('content')),
+                    model: _self.get('content'),
                     templateName: _self.editTemplate
                 };
 
@@ -664,10 +767,8 @@
         init: function() {
             this._super();
 
-            this.attributes = this.get('context').attributes;
-            this.Id = this.get('context').Id;
-
-            delete this.get('context').attributes;
+            this.set('context', this.get('model').get('content'));
+            this.Id = this.get('model').Id;
         },
         /**
           Method to save the current form values back to server.
@@ -675,22 +776,24 @@
           @method save
           @return {jQuery.Promise} A promise object which resolves when save to server succeeds.
         */
-        save: function() {
+        save: function(refetchOnSuccess) {
             var _self = this,
-                sobject = SFDC.getSObject(_self.attributes.type),
-                record = Ember.copy(_self.get('context'));
+                sobject = SFDC.getSObject(this.get('model').type),
+                record = _self.get('context');
 
             if (sobject && sobject.type) {
                 return sobject.getFieldInfoMap().then(function(fieldInfoMap) {
-                    var fieldsToSave = [];
+                    var attributesToSave = {};
                     Ember.keys(record).forEach(function(field) {
                         if (field.indexOf('_') != 0 && // Ignore internal cache related fields that start with '_'
                             typeof record[field] != 'object' && // Ignore any lookup relationship fields
                             fieldInfoMap[field].updateable) // Ignore any fields that are not editable for current user
-                                fieldsToSave.push(field);
+                                attributesToSave[field] = record[field];
                     });
-                    return Force.syncSObject('update', sobject.type, _self.Id, record, fieldsToSave, false, null, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
-                    .fail(function(xhr) {
+
+                    return _self.get('model').save(attributesToSave).then(function() {
+                        if (refetchOnSuccess) _self.get('model').fetch();
+                    }).fail(function(xhr) {
                         var viewErrors = {messages: []};
                         _.each(new Force.RestError(xhr).details, function(detail) {
                             if (detail.fields == null || detail.fields.length == 0) {

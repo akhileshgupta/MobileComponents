@@ -24,22 +24,22 @@
         <div id="home" data-role="page">
             <div data-role="header" data-position="fixed" data-tap-toggle="false"><h1>Contacts</h1></div>
             <div data-role="content">
-                <div id="contact-list" sf-role="list" sf-sobject="Account"></div>
+                <div id="contact-list" sf-role="list" sf-sobject="Contact"></div>
             </div>
         </div>
 
         <div id="detail" data-role="page">
             <div data-role="header" data-position="fixed" data-tap-toggle="false">
-                <a href='#home' class='ui-btn-left' data-icon='arrow-l' data-transition="slide" data-direction="reverse" data-iconpos="notext" data-theme="b">Contacts</a>
+                <a href='#home' class='ui-btn-left' data-icon='arrow-l' data-transition="slide" data-direction="reverse" data-iconpos="notext" data-theme="b">Back</a>
                 <h1>Details</h1>
                 <a id="showEdit" class='ui-btn-right' data-icon='edit' data-iconpos="notext" data-theme="b">Edit</a>
             </div>
             <div data-role="content" data-enhance="false">
-                <div id="contact-detail" sf-role="detail" sf-sobject="Account" sf-layout="detailLayout">
+                <div id="contact-detail" sf-role="detail" sf-sobject="Contact" sf-layout="detailLayout">
                     <script type="text/x-handlebars" data-template-name="detailLayout">
                         <header class="page-header--details">
-                            <h1>{{Name}}</h1>
-                            <h2>{{Industry}}</h2>
+                            <h1>{{FirstName}} {{LastName}}</h1>
+                            <h2>{{Title}}</h2>
                         </header>
                         {{yield}}
                     </script>
@@ -85,6 +85,7 @@
 
             var editView, closeForm = function() {
                 jQuery.mobile.changePage( '#detail', { changeHash:false, transition: 'slidedown' } );
+                editView.remove();
             };
             $('#showEdit').tap(function(event) {
                 editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit');
@@ -92,10 +93,8 @@
                     jQuery.mobile.changePage( '#edit', { changeHash:false, transition: 'slideup' } );
                 });
             });
-            $('#save').tap(function(){
-                editView.save().done(function() {
-                    SFDC.getViewController('contact-detail').fetch().one('contentChanged', closeForm);
-                });
+            $('#save').tap(function() {
+                editView.save(true).done(closeForm);
             });
             $('#close').tap(closeForm);
         </script>
