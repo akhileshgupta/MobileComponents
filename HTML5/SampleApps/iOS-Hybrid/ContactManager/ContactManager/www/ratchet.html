@@ -93,9 +93,7 @@
                 return false;
             };
             var saveForm = function() {
-                editView.save().done(function() {
-                    SFDC.getViewController('contact-detail').fetch().one('contentChanged', closeForm);
-                });
+                editView.save(true).done(closeForm);
                 return false;
             };
             var closeForm = function() {

@@ -81,10 +81,8 @@
                     jQuery.mobile.changePage( '#edit', { changeHash:false, transition: 'slideup' } );
                 });
             });
-            $('#save').tap(function(){
-                editView.save().done(function() {
-                    SFDC.getViewController('contact-detail').fetch().one('contentChanged', closeForm);
-                });
+            $('#save').tap(function() {
+                editView.save(true).done(closeForm);
             });
             $('#close').tap(closeForm);
         </script>
