@@ -272,7 +272,7 @@
         id: null,
         type: null,
         init: function() {
-            console.log('initializing sobject type: ' + this.type);
+            this._super();
             // Instantiate a new instance of Force.SObjectType
             this._sobjectType = new Force.SObjectType(this.type, SFDC.metadataStore);
         },
@@ -386,6 +386,7 @@
         type: null,
         attributes: null,
         init: function() {
+            this._super();
             this.set('content', {});
         },
         
@@ -767,7 +768,7 @@
         init: function() {
             this._super();
 
-            this.set('context', this.get('model').get('content'));
+            this.set('context', Ember.copy(this.get('model').get('content')));
             this.Id = this.get('model').Id;
         },
         /**
