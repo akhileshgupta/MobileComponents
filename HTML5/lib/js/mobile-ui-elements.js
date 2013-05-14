@@ -720,7 +720,7 @@
             }
 
             // Skip rerender if the selected view template is same as the one previously applied.
-            if (_self.view.get('template') !== viewProperties.template) {
+            if (_self.view.get('template') !== viewProperties.template || _self.view.get('templateName') !== viewProperties.templateName) {
                 _self.view.setProperties(viewProperties).rerender();
                 // Trigger an afterRender event once the DOM is updated with new template
                 _self.view.one('didInsertElement', function() {
