@@ -8,6 +8,13 @@
     // Map for default templates
     var T = {};
 
+    // Variable to store the current path of this script. Used to find the path to the template compiler.
+    var jsPath = (function() {
+        var scripts= document.getElementsByTagName('script');
+        var path = scripts[scripts.length-1].src.split('?')[0];      // remove any ?query
+        return path.split('/').slice(0, -1).join('/')+'/';  // remove last filename part of path
+    })();
+
     //------------------------- INTERNAL METHODS -------------------------
     var isOnline = function() {
         return navigator.onLine || 
@@ -102,7 +109,7 @@
                 if (fieldType == 'boolean') 
                     html += ('{{input type=checkbox checked=' + displayField + '}}');
                 else if (fieldType == 'picklist')
-                    html += ('{{view Ember.Select contentBinding="view.fieldInfoMap.' + fieldName + '.picklistValues" optionLabelPath="content.label" optionValuePath="content.value" valueBinding="' + displayField + '"}}');
+                    html += ('{{view Ember.Select contentBinding="view.parentView.fieldInfoMap.' + fieldName + '.picklistValues" optionLabelPath="content.label" optionValuePath="content.value" valueBinding="' + displayField + '"}}');
                 else if (fieldType == 'textarea')
                     html += ('{{textarea value=' + displayField + '}}');
                 else 
@@ -120,9 +127,10 @@
 
         // Generates and returns the handlebar template for the layout sections.
         var generateLayoutTemplate = function(sections, forEdit) {
-            var html = '';
+            var html = '', 
+                templates = []; // array to store the compiled handlebar templates
 
-            sections.forEach(function(section) {
+            sections.forEach(function(section, sectionIndex) {
                 html += '<div class="sf-layout-section">';
                 html += ('<h1 class="sf-layout-section-heading">' + section.heading + '</h1>');
                 // Iterate over layout rows in each section
@@ -162,9 +170,26 @@
                     html += '</div>';
                 });
                 html += '</div>';
+
+                console.log ('layout section template: ' + html);
+
+                // Use web workers, if available, to split and pre compile templates
+                if (!window.Worker) {
+                    var worker = new Worker(jsPath + 'template.compiler.js');
+                    worker.addEventListener('message', function(e) {
+                        console.log('received worker message');
+                        // Use the same response id to keep the section orders
+                        templates[e.data.id] = Ember.Handlebars.template(eval('(' + e.data.template + ')'));
+                    }, false);
+                    // Initiate a message to web worker to compile the generated html. Auto close the worker when finished.
+                    worker.postMessage({'cmd': 'start', 'id': sectionIndex, 'html': html, autoClose: true});
+                    html = ''; // reset for next section
+                } else if (sectionIndex == sections.length - 1) {
+                    // If web workers not available then wait till the end of sections array and compile the template.
+                    templates.push(Ember.Handlebars.compile(html));
+                }
             });
-            console.log ('layout template: ' + html);
-            return Ember.Handlebars.compile(html);
+            return templates;
         };
 
         return {
@@ -633,7 +658,7 @@
         init: function() {
             console.log('initializing detail controller');
             this._super();
-            this.view = Ember.View.create().appendTo(this.parent);
+            this.view = Ember.ContainerView.create().appendTo(this.parent);
             this.fetchLayouts();
             this.fetch();
         },
@@ -715,12 +740,15 @@
             if (!viewProperties.templateName) {
                 if (_self._layoutInfos) {
                     layoutId = _self._recordTypeMappings[_self.get('recordTypeId')] || _self._defaultLayoutMapping.layoutId;
-                    viewProperties.template = _self._layoutInfos[layoutId].detailLayout;
+                    _self._layoutInfos[layoutId].detailLayout.forEach(function(template) {
+                        _self.view.pushObject(Ember.View.create({template: template}));
+                    });
+                    viewProperties.layoutId = layoutId; // track the layout id to see if we need to re-render the view.
                 } else viewProperties.template = T.detail;
             }
 
             // Skip rerender if the selected view template is same as the one previously applied.
-            if (_self.view.get('template') !== viewProperties.template || _self.view.get('templateName') !== viewProperties.templateName) {
+            if (_self.view.get('layoutId') !== viewProperties.layoutId || _self.view.get('templateName') !== viewProperties.templateName) {
                 _self.view.setProperties(viewProperties).rerender();
                 // Trigger an afterRender event once the DOM is updated with new template
                 _self.view.one('didInsertElement', function() {
@@ -739,7 +767,8 @@
                 viewProperties = {
                     fieldInfoMap: _self._fieldInfoMap,
                     model: _self.get('content'),
-                    templateName: _self.editTemplate
+                    templateName: _self.editTemplate,
+                    childViews: []
                 };
 
             $(target).empty();
@@ -748,7 +777,9 @@
             if (!viewProperties.templateName) {
                 if (_self._layoutInfos) {
                     layoutId = _self._recordTypeMappings[_self.get('recordTypeId')] || _self._defaultLayoutMapping.layoutId;
-                    viewProperties.template = _self._layoutInfos[layoutId].editLayout;
+                    _self._layoutInfos[layoutId].editLayout.forEach(function(template) {
+                        viewProperties.childViews.push(Ember.View.create({template: template}));
+                    });
                 } else viewProperties.template = T.edit;
             }
             return SFDC.EditView.create(viewProperties).appendTo(target);
@@ -764,7 +795,7 @@
     /**
       View class to manages the edit view of a record.
     */
-    SFDC.EditView = Ember.View.extend({
+    SFDC.EditView = Ember.ContainerView.extend({
         init: function() {
             this._super();
 
