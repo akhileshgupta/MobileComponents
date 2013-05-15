@@ -174,7 +174,7 @@
                 console.log ('layout section template: ' + html);
 
                 // Use web workers, if available, to split and pre compile templates
-                if (!window.Worker) {
+                if (window.Worker) {
                     var worker = new Worker(jsPath + 'template.compiler.js');
                     worker.addEventListener('message', function(e) {
                         console.log('received worker message');
