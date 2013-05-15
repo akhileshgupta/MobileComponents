@@ -128,6 +128,7 @@
         // Generates and returns the handlebar template for the layout sections.
         var generateLayoutTemplate = function(sections, forEdit) {
             var html = '', 
+                deferred = $.Deferred(),
                 templates = []; // array to store the compiled handlebar templates
 
             sections.forEach(function(section, sectionIndex) {
@@ -175,11 +176,17 @@
 
                 // Use web workers, if available, to split and pre compile templates
                 if (window.Worker) {
+                    // Initialize the template value with null for the current section.
+                    templates[sectionIndex] = null;
+
+                    // Launch a new worker to obtain the template
                     var worker = new Worker(jsPath + 'template.compiler.js');
                     worker.addEventListener('message', function(e) {
                         console.log('received worker message');
                         // Use the same response id to keep the section orders
                         templates[e.data.id] = Ember.Handlebars.template(eval('(' + e.data.template + ')'));
+                        // If all responses have been received, resolve the deferred
+                        if (!_.any(templates, _.isNull)) deferred.resolve(templates);
                     }, false);
                     // Initiate a message to web worker to compile the generated html. Auto close the worker when finished.
                     worker.postMessage({'cmd': 'start', 'id': sectionIndex, 'html': html, autoClose: true});
@@ -187,17 +194,17 @@
                 } else if (sectionIndex == sections.length - 1) {
                     // If web workers not available then wait till the end of sections array and compile the template.
                     templates.push(Ember.Handlebars.compile(html));
+                    deferred.resolve(templates);
                 }
             });
-            return templates;
+            return deferred.promise();
         };
 
-        return {
-            // Templatize detail layout sections
-            detailLayout: generateLayoutTemplate(modArray(layout.detailLayoutSections)),
-            // Templatize edit layout sections
-            editLayout: generateLayoutTemplate(modArray(layout.editLayoutSections), true)
-        };
+        return $.when(generateLayoutTemplate(modArray(layout.detailLayoutSections)), // Templatize detail layout sections
+                      generateLayoutTemplate(modArray(layout.editLayoutSections), true)) // Templatize edit layout sections
+            .then(function(detailTemplate, editTemplate) {
+                return { detailLayout: detailTemplate, editLayout: editTemplate };
+            });
     }
 
     //--------------------- DEFAULT TEMPLATES ------------------------
@@ -206,7 +213,7 @@
     // Default template for list item
     T.list = Ember.Handlebars.compile('{{Name}}');
     // Default template for detail view
-    T.detail = Ember.Handlebars.compile('<div>Id: {{Id}}</div><div>Name: {{Name}}</div>');
+    T.detail = Ember.Handlebars.compile('{{view Ember.ContainerView viewName="detailContainer"}}');
 
     // Handlebar helper function to render the date and datetime fields properly.
     Ember.Handlebars.registerBoundHelper('fieldDisplay', function(value, options) {
@@ -656,11 +663,23 @@
         execOnceQueue: [],
         renderQueue: [],
         init: function() {
-            console.log('initializing detail controller');
-            this._super();
-            this.view = Ember.ContainerView.create().appendTo(this.parent);
-            this.fetchLayouts();
-            this.fetch();
+            var _self = this;
+
+            _self._super();
+            _self.view = Ember.View.create({
+                            controller: _self,
+                            layoutName: _self.layout,
+                            templateName: _self.template,
+                            template: !_self.template ? T.detail : null
+                        });
+            _self.view.appendTo(_self.parent);
+            _self.fetchLayouts().fetch().renderView();
+
+            _self.view.one('didInsertElement', function() {
+                Ember.run.scheduleOnce('afterRender', _self, function() {
+                    this.trigger('afterRender');
+                });
+            });
         },
         
         fetchLayouts: function() {
@@ -691,9 +710,14 @@
 
                     if (layoutDescribeResult === _self.fields) {
                         _self._defaultLayoutMapping = {layoutId: 0};
-                        _self._layoutInfos[0] = compileLayoutForFields(_self.fields.split(','), _self._layoutFieldSet, fieldInfoMap);
+                        compileLayoutForFields(_self.fields.split(','), _self._layoutFieldSet, fieldInfoMap)
+                        .done(function(templates) {
+                            _self._layoutInfos[0] = templates;
+                            _self.set('ready', true);
+                        });
                     } else {
                         // Store the record types to layout mappings for available record types
+                        // TBD: Add record type id to be fetched from server
                         modArray(layoutDescribeResult.recordTypeMappings).forEach(function(mapping){
                             if (mapping.available == 'true') 
                                 _self._recordTypeMappings[mapping.recordTypeId] = mapping;
@@ -704,12 +728,17 @@
 
                         // Store the compiled layout infos in handle bar templates
                         modArray(layoutDescribeResult.layouts).forEach(function(layout) {
-                            _self._layoutInfos[layout.id] = compileLayout(layout, _self._layoutFieldSet, fieldInfoMap);
+                            compileLayout(layout, _self._layoutFieldSet, fieldInfoMap)
+                            .done(function(templates) {
+                                _self._layoutInfos[layout.id] = templates;
+                                _self.set('ready', true);
+                            });
                         });
                     }
-                    _self.set('ready', true);
                 });
             } else _self.set('ready', true);
+
+            return _self;
         }.observes('sobject'),
 
         fetch: function() {
@@ -721,44 +750,35 @@
                 _self.set('content', SFDC.SObjectManager.fetch(_self.sobject, _self.record, _self._layoutFieldSet.toArray()));
             }
 
-            return this;
+            return _self;
         }.observes('record', 'ready'),
 
         renderView: function() {
             var _self = this, 
-                layoutId,
-                viewProperties = {
-                    controller: _self,
-                    layoutName: _self.layout,
-                    templateName: _self.template
-                };
+                layoutId;
 
             console.log('rendering view');
 
-            if (!_self.ready) return;
+            if (_self.ready && !_self.template) {
+                layoutId = _self._recordTypeMappings[_self.get('recordTypeId')] || _self._defaultLayoutMapping.layoutId;
 
-            if (!viewProperties.templateName) {
-                if (_self._layoutInfos) {
-                    layoutId = _self._recordTypeMappings[_self.get('recordTypeId')] || _self._defaultLayoutMapping.layoutId;
-                    _self._layoutInfos[layoutId].detailLayout.forEach(function(template) {
-                        _self.view.pushObject(Ember.View.create({template: template}));
-                    });
-                    viewProperties.layoutId = layoutId; // track the layout id to see if we need to re-render the view.
-                } else viewProperties.template = T.detail;
+                // Skip rerender if the selected view template is same as the one previously applied.
+                if (_self.view.get('layoutId') !== layoutId) {
+                    _self.view.get('detailContainer').clear();
+                    var layoutInfo = _self._layoutInfos[layoutId];
+                    if (layoutInfo) {
+                        _self._layoutInfos[layoutId].detailLayout.forEach(function(template) {
+                            _self.view.get('detailContainer').pushObject(Ember.View.create({template: template}));
+                        });
+                        _self.view.set('layoutId', layoutId);
+                        Ember.run.scheduleOnce('afterRender', _self, function() {
+                            this.trigger('rerender');
+                        });
+                    } else _self.set('ready', false);
+                }
             }
 
-            // Skip rerender if the selected view template is same as the one previously applied.
-            if (_self.view.get('layoutId') !== viewProperties.layoutId || _self.view.get('templateName') !== viewProperties.templateName) {
-                _self.view.setProperties(viewProperties).rerender();
-                // Trigger an afterRender event once the DOM is updated with new template
-                _self.view.one('didInsertElement', function() {
-                    Ember.run.scheduleOnce('afterRender', _self, function() {
-                        this.trigger('afterRender');
-                    });
-                });
-            }
-
-            return this;
+            return _self;
         }.observes('content', 'ready'),
 
         showEdit: function(target) {
@@ -768,6 +788,8 @@
                     fieldInfoMap: _self._fieldInfoMap,
                     model: _self.get('content'),
                     templateName: _self.editTemplate,
+                    layoutName: _self.editLayout,
+                    template: !_self.editTemplate ? T.detail : null,
                     childViews: []
                 };
 
