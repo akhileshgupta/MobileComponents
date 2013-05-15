@@ -184,6 +184,7 @@
                     worker.addEventListener('message', function(e) {
                         console.log('received worker message');
                         // Use the same response id to keep the section orders
+                        //TBD: Perform templatization at a future time when this layout needs to be rendered to save memory space. Store only templateSpec till then.
                         templates[e.data.id] = Ember.Handlebars.template(eval('(' + e.data.template + ')'));
                         // If all responses have been received, resolve the deferred
                         if (!_.any(templates, _.isNull)) deferred.resolve(templates);
@@ -604,6 +605,7 @@
             //TBD: Add max size option on the list Controller to handle cases of large resultsets.
             SFDC.SObjectManager.fetchMultiple(config).done(function(resp) {
                 console.log('obtained the results. Adding to the content.' + JSON.stringify(resp));
+                _self.clear();
                 var processFetchResult = function(records) {
                     console.log('fetched records. Adding to the collection.');
                     _self.pushObjects(records);
@@ -727,6 +729,7 @@
                         });
 
                         // Store the compiled layout infos in handle bar templates
+                        //TBD: Split the layout compilation of detail and edit layouts to improve performance.
                         modArray(layoutDescribeResult.layouts).forEach(function(layout) {
                             compileLayout(layout, _self._layoutFieldSet, fieldInfoMap)
                             .done(function(templates) {
@@ -781,12 +784,12 @@
             return _self;
         }.observes('content', 'ready'),
 
-        showEdit: function(target) {
+        showEdit: function(target, withNewModel) {
             var _self = this,
                 layoutId,
                 viewProperties = {
                     fieldInfoMap: _self._fieldInfoMap,
-                    model: _self.get('content'),
+                    model: withNewModel ? SFDC.SObjectModel.create({type: _self.sobject}) : _self.get('content'),
                     templateName: _self.editTemplate,
                     layoutName: _self.editLayout,
                     template: !_self.editTemplate ? T.detail : null,
@@ -847,6 +850,7 @@
 
                     return _self.get('model').save(attributesToSave).then(function() {
                         if (refetchOnSuccess) _self.get('model').fetch();
+                        return _self.get('model');
                     }).fail(function(xhr) {
                         var viewErrors = {messages: []};
                         _.each(new Force.RestError(xhr).details, function(detail) {

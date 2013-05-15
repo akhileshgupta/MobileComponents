@@ -22,7 +22,10 @@
 
     <body>
         <div id="home" data-role="page">
-            <div data-role="header" data-position="fixed" data-tap-toggle="false"><h1>Contacts</h1></div>
+            <div data-role="header" data-position="fixed" data-tap-toggle="false">
+                <h1>Contacts</h1>
+                <a id="showAdd" class='ui-btn-right' data-icon='plus' data-iconpos="notext" data-theme="b">Add</a>
+            </div>
             <div data-role="content">
                 <div id="contact-list" sf-role="list" sf-sobject="Contact"></div>
             </div>
@@ -83,18 +86,23 @@
                 jQuery.mobile.changePage( '#detail', {changeHash:false, transition: 'slide' } );
             });
 
-            var editView, closeForm = function() {
-                jQuery.mobile.changePage( '#detail', { changeHash:false, transition: 'slidedown' } );
+            var editView, previousPage, isNewForm, closeForm = function() {
+                jQuery.mobile.changePage( previousPage, { changeHash:false, transition: 'slidedown' } );
                 editView.remove();
             };
-            $('#showEdit').tap(function(event) {
-                editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit');
+            $('#showEdit, #showAdd').tap(function(event) {
+                isNewForm = (this.id == 'showAdd');
+                editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit', isNewForm);
                 editView.on('didInsertElement', function() { 
+                    previousPage = '#' + $('.ui-page-active').attr('id');
                     jQuery.mobile.changePage( '#edit', { changeHash:false, transition: 'slideup' } );
                 });
             });
             $('#save').tap(function() {
-                editView.save(true).done(closeForm);
+                editView.save(true).done(function(model) {
+                    if (isNewForm) SFDC.getViewController('contact-list').fetch();
+                    closeForm();
+                });
             });
             $('#close').tap(closeForm);
         </script>

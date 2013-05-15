@@ -24,6 +24,7 @@
         <div id="home" class="absolute">
             <header class="bar-title">
               <h1 class="title">Contacts</h1>
+              <a class="button" onClick="showEdit(true);">Add</a>
             </header>
             <div class="content">
                 <div id="contact-list" sf-role="list" sf-sobject="Contact"></div>
@@ -87,14 +88,17 @@
                 return false;
             }
 
-            var editView;
-            var showEdit = function(event) {
-                editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit');
+            var editView, isNewForm;
+            var showEdit = function(forCreate) {
+                editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit', isNewForm = forCreate);
                 editView.on('didInsertElement', function() { $('#edit').addClass('active'); });
                 return false;
             };
             var saveForm = function() {
-                editView.save(true).done(closeForm);
+                editView.save(true).done(function(model) {
+                    if (isNewForm) SFDC.getViewController('contact-list').fetch();
+                    closeForm();
+                });
                 return false;
             };
             var closeForm = function() {
