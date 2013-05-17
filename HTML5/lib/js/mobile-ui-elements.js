@@ -426,7 +426,7 @@
         fetch: function(fields) {
             var _self = this;
             var fieldsToFetch = _.union(_self.get('fields'), fields || []);
-            return Force.syncSObject('read', _self.type, _self.Id, null, fieldsToFetch, false, null, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
+            return Force.syncSObject('read', _self.type, _self.Id, null, fieldsToFetch, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
             .then(function(record) {
                 _self.setProperties(record);
             });
@@ -437,7 +437,7 @@
             var fieldsToSave = _.keys(attributes);
             var operation = _self.Id ? 'update' : 'create';
 
-            return Force.syncSObject(operation, _self.type, _self.Id, attributes, fieldsToSave, false, true, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
+            return Force.syncSObject(operation, _self.type, _self.Id, attributes, fieldsToSave, SFDC.dataStore, isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY)
             .then(function(result) {
                 _self.setProperties(result);
             });

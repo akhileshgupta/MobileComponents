@@ -206,16 +206,28 @@
                 });
         },
 
-        // Return promise which stores a record in cache (NB: record is merged with existing record if any)
-        save: function(record) {
+        // Return promise which stores a record in cache
+        save: function(record, noMerge) {
             if (this.soupName == null) return;
-            console.log("----> In StoreCache:save " + this.soupName + ":" + record[this.keyField]);
+            console.log("----> In StoreCache:save " + this.soupName + ":" + record[this.keyField] + " noMerge:" + (noMerge == true));
 
             var that = this;
-            record = this.addLocalFields(record);
-            return this.retrieve(record[this.keyField])
-                .then(function(oldRecord) {
-                    record = _.extend(oldRecord || {}, record);
+
+            var mergeIfRequested = function() { 
+                if (noMerge) {
+                    return $.when(record);
+                }
+                else {
+                    return that.retrieve(record[that.keyField])
+                        .then(function(oldRecord) {
+                            return _.extend(oldRecord || {}, record);
+                        });
+                }
+            };
+
+            return mergeIfRequested()
+                .then(function(record) {
+                    record = that.addLocalFields(record);
                     return smartstoreClient.upsertSoupEntriesWithExternalId(that.soupName, [ record ], that.keyField)
                 })
                 .then(function(records) {
@@ -224,32 +236,51 @@
         },
 
         // Return promise which stores several records in cache (NB: records are merged with existing records if any)
-        saveAll: function(records) {
+        saveAll: function(records, noMerge) {
             if (this.soupName == null) return;
-            console.log("----> In StoreCache:saveAll records.length=" + records.length);
+            console.log("----> In StoreCache:saveAll records.length=" + records.length + " noMerge:" + (noMerge == true));
 
             var that = this;
-            var oldRecords = {};
-            var smartSql = "SELECT {" + this.soupName + ":_soup} " 
-                + "FROM {" + this.soupName + "} " 
-                + "WHERE {" + this.soupName + ":" + this.keyField + "} "
-                + "IN ('" + _.pluck(records, this.keyField).join("','") + "')";
 
-            var querySpec = navigator.smartstore.buildSmartQuerySpec(smartSql, records.length);
+            var mergeIfRequested = function() {
+                if (noMerge) {
+                    return $.when(records);
+                }
+                else {
+                    if (_.any(records, function(record) { return !_.has(record, that.keyField); })) {
+                        throw new Error("Can't merge without " + that.keyField);
+                    }
 
-            return smartstoreClient.runSmartQuery(querySpec)
-                .then(function(cursor) {
-                    _.each(cursor.currentPageOrderedEntries, function(oldRecord) {
-                        oldRecords[oldRecord[that.keyField]] = oldRecord;
-                    });
-                    return smartstoreClient.closeCursor(cursor);
-                })
-                .then(function() {
+                    var oldRecords = {};
+                    var smartSql = "SELECT {" + that.soupName + ":_soup} " 
+                        + "FROM {" + that.soupName + "} " 
+                        + "WHERE {" + that.soupName + ":" + that.keyField + "} "
+                        + "IN ('" + _.pluck(records, that.keyField).join("','") + "')";
+
+                    var querySpec = navigator.smartstore.buildSmartQuerySpec(smartSql, records.length);
+
+                    return smartstoreClient.runSmartQuery(querySpec)
+                        .then(function(cursor) {
+                            _.each(cursor.currentPageOrderedEntries, function(oldRecord) {
+                                oldRecords[oldRecord[that.keyField]] = oldRecord;
+                            });
+                            return smartstoreClient.closeCursor(cursor);
+                        })
+                        .then(function() {
+                            return _.map(records, function(record) {
+                                var oldRecord = oldRecords[record[that.keyField]];
+                                return _.extend(oldRecord || {}, record)
+                            });
+                        });
+                }
+            };
+
+            return mergeIfRequested()
+                .then(function(records) {
                     records = _.map(records, function(record) {
-                        var oldRecord = oldRecords[record[that.keyField]];
-                        return that.addLocalFields(_.extend(oldRecord || {}, record));
+                        return that.addLocalFields(record);
                     });
-
+                    
                     return smartstoreClient.upsertSoupEntriesWithExternalId(that.soupName, records, that.keyField);
                 });
         },
@@ -262,6 +293,7 @@
         //   getMore: "function to fetch more records",
         //   closeCursor: "function to close the open cursor and disable further fetch" 
         // }
+        // XXX we don't have totalSize
         find: function(querySpec) {
 
             var closeCursorIfNeeded = function(cursor) {
@@ -470,24 +502,28 @@
     // ---------------------------
     // Helper method to do any single record CRUD operation against cache
     // * method:<create, read, delete or update>
-    // * sobjectType:<record type>
     // * id:<record id or null during create>
     // * attributes:<map field name to value>  record attributes given by a map of field name to value
     // * fieldlist:<fields>                    fields to fetch for read  otherwise full record is fetched, fields to save for update or create (required)
     // * cache:<cache object>                  cache into which  created/read/updated/deleted record are cached    
-    // * localChange:true|false                pass true if the change is done against the cache only (and has not been done against the server)
+    // * localAction:true|false                pass true if the change is done against the cache only (and has not been done against the server)
     //
     // Returns a promise
     //
-    Force.syncSObjectWithCache = function(method, sobjectType, id, attributes, fieldlist, cache, localAction) {
+    Force.syncSObjectWithCache = function(method, id, attributes, fieldlist, cache, localAction) {
         console.log("---> In Force.syncSObjectWithCache:method=" + method + " id=" + id);
 
         localAction = localAction || false;
         var isLocalId = cache.isLocalId(id);
+        var targetedAttributes = (fieldlist == null ? attributes : (attributes == null ? null : _.pick(attributes, fieldlist)));
 
         // Cache actions helper
         var cacheCreate = function() {
-            var data = _.extend(attributes, {Id: (localAction ? cache.makeLocalId() : id), __locally_created__:localAction, __locally_updated__:false, __locally_deleted__:false});
+            var data = _.extend(targetedAttributes, 
+                                {Id: (localAction ? cache.makeLocalId() : id), 
+                                 __locally_created__:localAction, 
+                                 __locally_updated__:false, 
+                                 __locally_deleted__:false});
             return cache.save(data);
         };
 
@@ -499,7 +535,11 @@
         };
         
         var cacheUpdate = function() { 
-            var data = _.extend(attributes, {Id: id, __locally_created__: isLocalId, __locally_updated__: localAction, __locally_deleted__: false});
+            var data = _.extend(targetedAttributes,
+                                {Id: id, 
+                                 __locally_created__: isLocalId, 
+                                 __locally_updated__: localAction, 
+                                 __locally_deleted__: false});
             return cache.save(data);
         };
 
@@ -508,10 +548,7 @@
                 return cache.remove(id);
             }
             else {
-                return cache.retrieve(id).
-                    then(function(data) {
-                        return cache.save(_.extend(data, {__locally_deleted__: true}));
-                    })
+                return cache.save({Id:id, __locally_deleted__:true})
                     .then(function() {
                         return null;
                     });
@@ -539,12 +576,10 @@
     // * id:<record id or null during create>
     // * attributes:<map field name to value>  record attributes given by a map of field name to value
     // * fieldlist:<fields>                    fields to fetch for read, fields to save for update or create (required)
-    // * refetch:<true|false>                  for create or update to refetch the record following the save (useful in case of calculated fields)
-    // * refetchFieldList:<fields>             when refetch is true, fields to refetch
     //
     // Returns a promise
     //
-    Force.syncSObjectWithServer = function(method, sobjectType, id, attributes, fieldlist, refetch, refetchFieldList) {
+    Force.syncSObjectWithServer = function(method, sobjectType, id, attributes, fieldlist) {
         console.log("---> In Force.syncSObjectWithServer:method=" + method + " id=" + id);
 
         // Server actions helper
@@ -558,10 +593,6 @@
 
         var serverRetrieve = function() { 
             return forcetkClient.retrieve(sobjectType, id, fieldlist);
-        };
-
-        var serverRefetch = function(data) { 
-            return forcetkClient.retrieve(sobjectType, data.Id, refetchFieldList);
         };
 
         var serverUpdate   = function() { 
@@ -586,10 +617,6 @@
         case "read":   promise = serverRetrieve(); break;
         case "update": promise = serverUpdate(); break;
         case "delete": promise = serverDelete(); break; /* XXX on 404 (record already deleted) we should not fail otherwise cache won't get cleaned up */
-        }
-
-        if (refetch) {
-            promise = promise.then(serverRefetch);
         }
 
         return promise;
@@ -622,15 +649,15 @@
     // Returns a promise
     //
     //
-    Force.syncSObject = function(method, sobjectType, id, attributes, fieldlist, refetch, refetchFieldList, cache, cacheMode) {
+    Force.syncSObject = function(method, sobjectType, id, attributes, fieldlist, cache, cacheMode) {
         console.log("--> In Force.syncSObject:method=" + method + " id=" + id + " cacheMode=" + cacheMode);
 
         var serverSync = function(method, id) {
-            return Force.syncSObjectWithServer(method, sobjectType, id, attributes, fieldlist, refetch, refetchFieldList);
+            return Force.syncSObjectWithServer(method, sobjectType, id, attributes, fieldlist);
         };
 
         var cacheSync = function(method, id, attributes, fieldlist, localAction) {
-            return Force.syncSObjectWithCache(method, sobjectType, id, attributes, fieldlist, cache, localAction);
+            return Force.syncSObjectWithCache(method, id, attributes, fieldlist, cache, localAction);
         }            
 
         // Server only
@@ -640,7 +667,7 @@
 
         // Cache only
         if (cache != null && cacheMode == Force.CACHE_MODE.CACHE_ONLY) {
-            return cacheSync(method, id, attributes, null /* we don't want to have a cache miss even if not all fields are there */, true);
+            return cacheSync(method, id, attributes, null, true);
         }
         
         // Chaining promises that return either a promise or created/upated/reda model attributes or null in the case of delete
@@ -686,7 +713,7 @@
         // Write back to cache if not read from cache
         promise = promise.then(function(data) {
             if (!wasReadFromCache) {
-                var targetId = (method == "create" ? data.Id : id);
+                var targetId = (method == "create" || cache.isLocalId(id) /* create as far as the server goes but update as far as the cache goes*/ ? data.Id : id);
                 var targetMethod = (method == "read" ? "update" /* we want to write to the cache what was read from the server */: method);
                 return cacheSync(targetMethod, targetId, data);
             }
@@ -738,11 +765,11 @@
     //   conflictingChanges:<fields changed both in theirs and yours with different values>
     // }
     // 
-    Force.syncSObjectDetectConflict = function(method, sobjectType, id, attributes, fieldlist, refetch, refetchFieldList, cache, cacheMode, cacheForOriginals, mergeMode) {
+    Force.syncSObjectDetectConflict = function(method, sobjectType, id, attributes, fieldlist, cache, cacheMode, cacheForOriginals, mergeMode) {
         console.log("--> In Force.syncSObjectDetectConflict:method=" + method + " id=" + id + " cacheMode=" + cacheMode + " mergeMode=" + mergeMode);
 
         var sync = function(attributes) {
-            return Force.syncSObject(method, sobjectType, id, attributes, fieldlist, refetch, refetchFieldList, cache, cacheMode);
+            return Force.syncSObject(method, sobjectType, id, attributes, fieldlist, cache, cacheMode);
         };
 
         // Original cache required for conflict detection
@@ -969,7 +996,7 @@
                 };
 
                 var cacheForOriginalsSaveAll = function(records) {
-                    return cacheForOriginals != null ? cacheForOriginal.saveAll(records) : records;
+                    return cacheForOriginals != null ? cacheForOriginals.saveAll(records) : records;
                 };
 
                 var setupGetMore = function(records) {
@@ -1015,12 +1042,6 @@
             // Used if none is passed during sync call - can be a cache object or a function returning a cache object
             cacheForOriginals: null,
 
-            // Used if none is passed during sync call - can be boolean or a function returning a boolean
-            refetch: null,
-
-            // Used if none is passed during sync call - can be a string array or a function returning a string array
-            refetchFieldList: null,
-
             // sobjectType is expected on every instance
             sobjectType:null,
 
@@ -1031,7 +1052,6 @@
             //
             // Extra options (can also be defined as properties of the model object)
             // * fieldlist:<array of fields> during read if you don't want to fetch the whole record, during save fields to save
-            // * refetch:true during create/update to do a fetch following the create/update
             // * cache:<cache object>
             // * cacheMode:<any Force.CACHE_MODE values>
             // * cacheForOriginals:<cache object>
@@ -1042,18 +1062,16 @@
                 var resolveOption = function(optionName) {
                     return options[optionName] || (_.isFunction(that[optionName]) ? that[optionName](method) : that[optionName]);
                 };
-
+ 
                 console.log("-> In Force.SObject:sync method=" + method + " model.id=" + model.id);
-
+ 
                 var fieldlist         = resolveOption("fieldlist");
                 var cacheMode         = resolveOption("cacheMode");
                 var mergeMode         = resolveOption("mergeMode");
                 var cache             = resolveOption("cache");
                 var cacheForOriginals = resolveOption("cacheForOriginals");
-                var refetch           = resolveOption("refetch");
-                var refetchFieldList  = resolveOption("refetchFieldList");
 
-                Force.syncSObjectDetectConflict(method, this.sobjectType, model.id, model.attributes, fieldlist, options.refetch, options.refetchFieldList, cache, cacheMode, cacheForOriginals, mergeMode)
+                Force.syncSObjectDetectConflict(method, this.sobjectType, model.id, model.attributes, fieldlist, cache, cacheMode, cacheForOriginals, mergeMode)
                     .done(options.success)
                     .fail(options.error);
             }
@@ -1072,6 +1090,8 @@
         //   or {type:"cache", cacheQuery:<cache query>, closeCursorImmediate:(Optional, Default: false)<true/false>}
         // 
         Force.SObjectCollection = Backbone.Collection.extend({
+            model: Force.SObject,
+            
             // Used if none is passed during sync call - can be a cache object or a function returning a cache object
             cache: null,
 
@@ -1115,9 +1135,9 @@
                     throw new Error("Method " + method  + " not supported");
                 }
                 
-                var config = options.config || (_.isFunction(this.config) ? this.config() : this.config);
-                var cache = options.cache || (_.isFunction(this.cache) ? this.cache() : this.cache);
-                var cacheForOriginals = options.cacheForOriginals || (_.isFunction(this.cacheForOriginals) ? this.cacheForOriginals() : this.cacheForOriginals);
+                var config = options.config || _.result(this, "config");
+                var cache = options.cache   || _.result(this, "cache");
+                var cacheForOriginals = options.cacheForOriginals || _.result(this, "cacheForOriginals");
 
                 if (config == null) {
                     options.success([]);
