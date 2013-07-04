@@ -450,7 +450,7 @@
                 }
                 return value;
             }
-            
+
 	        if (type != null) {
 	            var binding = new CompoundBinding(function(values) {
 	                return typeRenderer(type, values['value']);
@@ -474,11 +474,7 @@
     }
 
     var parseDOM = function() {
-    	var idCount = 0;
-        SFDC.components = [];
-        SFDC.sobjects = [];
-
-        $("[sf-role]").each(function() {
+    	$("[sf-role]").each(function() {
             var parent = $(this), 
                 view, options = {};
 
@@ -491,8 +487,6 @@
             if (parent.attr('sf-role') == 'list') view = new SFDC.ListView(options);
             else if (parent.attr('sf-role') == 'detail') view = new SFDC.DetailView(options);
             else if (parent.attr('sf-role') == 'edit') view = new SFDC.FormView(options);
-
-            //if (view) SFDC.components.push(view);
         });
     }
 
@@ -582,9 +576,13 @@
             if (forEdit) {
                 if (fieldType == 'boolean') 
                     html += ('<input type="checkbox" checked="{{' + displayField + '}}"/>');
-                else if (fieldType == 'picklist')
-                    html += ('<select value="{{' + displayField + '}}"><template repeat="{{fieldInfoMap.' + fieldName + '.picklistValues}}"><option value="{{value}}">{{label}}</option></template></select>');
-                else if (fieldType == 'textarea')
+                else if (fieldType == 'picklist') {
+                    html += '<select value="{{' + displayField + '}}">';
+                    fieldInfo.picklistValues.forEach(function(option){
+                        html += ('<option value="' + option.value + '">' + option.label + '</option>');
+                    })
+                    html += '</select>';
+                } else if (fieldType == 'textarea')
                     html += ('<input type="textarea" value="{{' + displayField + '}}"/>');
                 else 
                     html += ('<input value="{{' + displayField + '}}" type="' + inputType(fieldType) + '" maxlength="' + fieldInfo.length + '"/>');
