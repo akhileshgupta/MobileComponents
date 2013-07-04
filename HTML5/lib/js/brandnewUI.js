@@ -95,6 +95,13 @@
 	// Global Events Dispatcher to loosely couple all the views
 	SFDC.eventDispatcher = _.extend({}, Backbone.Events);
 
+    SFDC.isOnline = function() {
+        return navigator.onLine || 
+               (typeof navigator.connection != 'undefined' &&
+               navigator.connection.type !== Connection.UNKNOWN &&
+               navigator.connection.type !== Connection.NONE);
+    }
+
 	//SFDC.launch
 	SFDC.launch = function(options) {
         var opts = {apiVersion: '28.0', userAgent: 'SalesforceMobileUI/alpha'};
@@ -127,10 +134,8 @@
     	},
     	render: function() {
     		var _self = this,
-    			template;
-    		if (this.template) {
-    			template = document.getElementById(this.template);
-    		} else {
+    			template = getTemplateFor(this.template);
+    		if (!template) {
     			template = createTemplateFromMarkup(T.listLayout);
     			this.$el.empty().append(template);
     		}
@@ -144,7 +149,7 @@
                 config = {};
 
 			// fetch list from forcetk and populate SOBject model
-            if (isOnline()) {
+            if (SFDC.isOnline()) {
                 if (_self.query) {
                     config.type = 'soql';
                     config.query = _self.query;
@@ -211,7 +216,22 @@
 			this.sobjectType.reset();
 			this.initialize();
 		}
-	})
+	});
+
+    var SObjectViewModel = function(model) {
+        var _self = this;
+
+        var setupProps = function(props) {
+            props.forEach(function(prop) {
+                _self.__defineGetter__(prop, function() { return model.get(prop); })
+                _self.__defineSetter__(prop, function(val) { model.set(prop, val); })
+            });
+        }
+        model.on('change', function() {
+            setupProps(_.difference(_.keys(model.attributes), _.keys(_self)));
+        });
+        setupProps(_.keys(model.attributes));
+    }
 
 	_.extend(SFDC.SObjectView.prototype, {
     	initialize: function(options) {
@@ -229,8 +249,6 @@
     	},
     	prepare: function() {
     		var _self = this,
-    			recordTypeId,
-    			layoutTemplate,
     			statusDeferred = $.Deferred();
 
     		_self._statusMonitor = statusDeferred.promise();
@@ -238,19 +256,20 @@
     		if (_self.sobject) {
     			var Model = Force.SObject.extend({ sobjectType: _self.sobject });
     			_self.model = new Model({
-	    			Id: _self.options.recordid, 
+	    			Id: _self.recordid, 
 	    			recordTypeId: _self.options.recordtypeid 
 	    		});
 	    	}
             	
             //TBD: Check If template is specified, fields should also be specified.
-            if (_self.template) {
+            var template = getTemplateFor(_self.template);
+            if (template) {
             	_self._statusMonitor.resolve({
-            		template: document.getElementById(_self.template),
+            		template: template,
             		fields: _self.fields.split(',')
             	});
             } else if (_self.model) {
-            	recordTypeId = (_self.hasrecordtypes) ? _self.model.get('recordTypeId') : '012000000000000AAA';
+            	var recordTypeId = (_self.hasrecordtypes) ? _self.model.get('recordTypeId') : '012000000000000AAA';
 
             	var fetchTemplateInfo = function(recordTypeId) {
             		// Fetch the layout template info using the Sobject View Helper
@@ -286,7 +305,7 @@
     		_self._statusMonitor.done(function(templateInfo) {
     			var template = templateInfo.template;
     			if (_self.$el.has(template).length == 0) _self.$el.empty().append(template);
-    			template.model = _self.model;
+    			template.model = new SObjectViewModel(_self.model);
     			setTimeout(function() { _self.trigger('afterRender'); }, 0);
     		});
 
@@ -359,7 +378,7 @@
                         });
                     }
                 });
-                _self.model.set('__errors__', viewErrors);
+                _self.$el.children('template')[0].model['__errors__'] = viewErrors;
                 saveMonitor.reject();
 			}
 
@@ -377,15 +396,15 @@
 	});
 
 	//------------------------- INTERNAL METHODS -------------------------
-    var isOnline = function() {
-        return navigator.onLine || 
-               (typeof navigator.connection != 'undefined' &&
-               navigator.connection.type !== Connection.UNKNOWN &&
-               navigator.connection.type !== Connection.NONE);
+    var getTemplateFor = function(template){
+        if (template) {
+            if (_.isString(template)) return document.getElementById(template);
+            else if (template instanceof HTMLTemplateElement) return template;
+        }
     }
 
     var cacheMode = function() {
-    	return isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY;
+    	return SFDC.isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY;
     }
 
     // Utility method to ensure that input object is an array. 
@@ -431,12 +450,7 @@
                 }
                 return value;
             }
-
-            pathParts = path.split('.');
             
-            model.__defineGetter__(pathParts[0], function() { return model.get(pathParts[0]); });
-	        model.__defineSetter__(pathParts[0], function(val) { model.set(pathParts[0], val); });
-
 	        if (type != null) {
 	            var binding = new CompoundBinding(function(values) {
 	                return typeRenderer(type, values['value']);
@@ -473,7 +487,6 @@
                     options[this.nodeName.substr(3)] = this.nodeValue;
             });
             options.el = parent[0];
-            options.id = this.id || ('sf-comp-' + idCount++);
 
             if (parent.attr('sf-role') == 'list') view = new SFDC.ListView(options);
             else if (parent.attr('sf-role') == 'detail') view = new SFDC.DetailView(options);

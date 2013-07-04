@@ -75,7 +75,7 @@
 
             $('#contact-list').click(function(event) {
                 var detailView = $('#contact-detail').view();
-                detailView.options.recordid = event.target.id;
+                detailView.recordid = event.target.id;
                 detailView.rerender();
                 $('#home').changePage($('#detail').show(), false, function() { $('#home').hide(); });
             });
@@ -90,8 +90,8 @@
                 isNewForm = forCreate;
 
                 var editView = $('#contact-edit').view();
-                if (!forCreate) editView.options.recordid = $('#contact-detail').view().model.id;
-                else editView.options.recordid = null;
+                if (!forCreate) editView.recordid = $('#contact-detail').view().model.id;
+                else editView.recordid = null;
                 editView.rerender();
 
                 editView.on('afterRender', function() { $('#edit').addClass('active'); });
