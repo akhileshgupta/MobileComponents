@@ -3,7 +3,7 @@
     "oauthRedirectURI": "testsfdc:///mobilesdk/detect/oauth/done",
     "oauthScopes": ["web", "api"],
     "isLocal": true,
-    "startPage": "jqmobile.html",
+    "startPage": "ratchet.html",
     "errorPage": "error.html",
     "shouldAuthenticate": true,
     "attemptOfflineLoad": true

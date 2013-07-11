@@ -9,10 +9,12 @@
         <script src="containerjs/cordova.force.js"></script>
         <script src="containerjs/bootconfig.js"></script>
 
-        <script src="lib/js/libs.min.js"></script>
+        <script src="lib/js/libs-backbone.min.js"></script>
 
-        <script src="lib/js/forcejs.min.js"></script>
-        <script src="lib/js/force.entity.js"></script>
+        <script src="lib/js/forcetk.mobilesdk.js"></script>
+        <script src="lib/js/smartsync.js"></script>
+
+        <script src="lib/js/platform.min.js"></script>   
         <script src="lib/js/mobile-ui-elements.js"></script>
         <script src="lib/js/jq-slide.js"></script>
 
@@ -27,9 +29,11 @@
               <a class="button" onClick="showEdit(true);">Add</a>
             </header>
             <div class="content">
-                <div id="contact-list" sf-role="list" sf-sobject="Contact"></div>
+                <div id="contact-list" sf-role="list" sf-sobject="Contact">
+                </div>
             </div>
         </div>
+
 
         <div id="detail" style="display: none;" class="absolute">
             <header class="bar-title">
@@ -38,15 +42,7 @@
                 <a class="button" onClick="showEdit();">Edit</a>
             </header>
             <div class="content">
-                <div id="contact-detail" sf-role="detail" sf-sobject="Contact" sf-layout="detailLayout">
-                    <script type="text/x-handlebars" data-template-name="detailLayout">
-                        <header class="page-header--details">
-                            <h1>{{FirstName}} {{LastName}}</h1>
-                            <h2>{{Title}}</h2>
-                        </header>
-                        {{yield}}
-                    </script>
-                </div>
+                <div id="contact-detail" sf-role="detail" sf-sobject="Contact"></div>
             </div>
         </div>
 
@@ -57,7 +53,7 @@
                 <a class="button" onClick="saveForm();">Save</a>
             </header>
             <div class="content">
-                <div id="contact-edit"></div>
+                <div id="contact-edit" sf-role="edit" sf-sobject="Contact"></div>
             </div>
         </div>
 
@@ -66,19 +62,20 @@
             document.addEventListener("deviceready", function () {
                 //Call getAuthCredentials to get the initial session credentials
                 cordova.require("salesforce/plugin/oauth").getAuthCredentials(
-                    function(creds) { SFDC.launch(creds); }, 
+                    function(creds) { 
+                        SFDC.launch(creds); 
+                        $('#contact-list').view().once('afterRender', function() {
+                            // Apply ratchet list style after rendering of list
+                            $('#contact-list').find('ul').addClass('list');
+                        });
+                    }, 
                     function(error) { console.log("Auth failed: " + error); });
             });
 
-            $(document).on('SFDCReady', function() {
-                // Apply ratchet list style after rendering of list
-                SFDC.getViewController('contact-list').on('afterRender', function() { 
-                    this.view.$('ul').addClass('list'); 
-                });
-            });
-
             $('#contact-list').click(function(event) {
-                SFDC.getViewController('contact-detail').set('record', event.target.id);
+                var detailView = $('#contact-detail').view();
+                detailView.recordid = event.target.id;
+                detailView.rerender();
                 $('#home').changePage($('#detail').show(), false, function() { $('#home').hide(); });
             });
 
@@ -87,22 +84,27 @@
                 return false;
             }
 
-            var editView, isNewForm;
+            var isNewForm;
             var showEdit = function(forCreate) {
-                editView = SFDC.getViewController('contact-detail').showEdit('#edit #contact-edit', isNewForm = forCreate);
-                editView.on('didInsertElement', function() { $('#edit').addClass('active'); });
+                isNewForm = forCreate;
+
+                var editView = $('#contact-edit').view();
+                if (!forCreate) editView.recordid = $('#contact-detail').view().model.id;
+                else editView.recordid = null;
+                editView.rerender();
+
+                editView.on('afterRender', function() { $('#edit').addClass('active'); });
                 return false;
             };
             var saveForm = function() {
-                editView.save(true).done(function(model) {
-                    if (isNewForm) SFDC.getViewController('contact-list').fetch();
+                $('#contact-edit').view().save().done(function() {
+                    if (isNewForm) $('#contact-list').view().fetch();
                     closeForm();
                 });
                 return false;
             };
             var closeForm = function() {
                 $('#edit').removeClass('active');
-                editView.remove();
                 return false;
             };
         </script>
