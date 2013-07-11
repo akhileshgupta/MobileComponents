@@ -18,6 +18,10 @@ Mobile UI Elements is a simple javascript based library that extends the standar
 2. **Detail **: Detail Element provides a quick and easy way to render the details for any sobject. One can easily manage the behavior of the element by using the various attributes or the javascript hooks on this element. Supported attributes include: sf-sobject, sf-recordid, sf-hasrecordtypes, sf-recordtypeid, sf-template. Eg. `<div sf-role="detail" sf-sobject="Account" sf-recordid="001000000000AAA"></div>`
 3. **Form **: Form Element provides a quick and easy way to render a form for modifying/creating  any sobject record. One can easily manage the behavior of the element by using the various attributes or the javascript hooks on this element. Supported attributes include: sf-role, sf-sobject, sf-recordid, sf-hasrecordtypes, sf-recordtypeid, sf-template. Eg. `<div sf-role="edit" sf-sobject="Account" sf-recordid="001000000000AAA"></div>`
 
+
+## Sample Apps ##
+- iOS-Hybrid: A Hybrid sample app to demonstrate the use of Mobile UI elements inside Mobile SDK.
+- local: A simple HTML file that can be run locally on the browser to easily test and learn the UI Elements.
  
 ## Third-party Code ##
 
