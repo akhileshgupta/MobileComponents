@@ -1,0 +1,145 @@
+<link rel="import" href="../../bower_components/polymer-elements/polymer-flex-layout/polymer-flex-layout.html"/>
+<polymer-element name="force-app" attributes="multipage, activepageselector, accesstoken, instanceurl">
+  <script src="../js/libs-backbone.min.js"></script>
+  <script src="../js/jquery-2.0.3.js"></script>
+  <script src="../js/underscore-1.4.4.min.js"></script>
+  <script src="../js/backbone-1.0.0.js"></script>
+  <script src="../js/forcetk.mobilesdk.js"></script>
+  <script src="../js/smartsync.js"></script>
+  <script src="../js/jq-slide.js"></script>
+  <script src="force-app.js"></script>
+  <template>
+    <link rel="stylesheet" href="../css/ratchet.css"/>
+    <link rel="stylesheet" href="../css/responsive.css"/>
+    <link rel="stylesheet" href="../css/styles.css"/>
+    <style>
+      [class*="bar-"], .content {
+        position: absolute;
+      }
+      @host {
+        :scope {
+          display: block;
+          min-height: 200px;
+          min-width: 200px;
+          width: 100%;
+          height: 100%;
+          background-color: white;
+          z-index: 0;
+        }
+        .splitview .content {
+          position: static;
+          margin-top: 44px;
+        }
+      }
+    </style>
+    <header class="bar-title">
+      <template if="{{multipage && pageStack.length > 0}}">
+      <a class="button-prev" on-click="navigateback">Previous</a>
+      </template>
+    </header>
+    <content id="pages" select="*"></content>
+    <polymer-flex-layout></polymer-flex-layout>
+  </template>
+
+  <script>
+    (function() {
+      Polymer('force-app', {
+        multipage: false,
+        activepageselector: '.page:first-child',
+        accesstoken: '',
+        instanceurl: '',
+        pageStack: [],
+        //applyAuthorStyles: true,
+        //resetStyleInheritance: true,
+        ready: function() {
+          this.async(this.arrangePages);
+          this.launch();
+        },
+        get pages() {
+          return $(this.$.pages.getDistributedNodes()).filter('.page');
+        },
+        arrangePages: function() {
+          if (this.multipage) {
+            $(this).removeClass('splitview');
+            this.pages.filter(this.activepageselector).show();
+            this.pages.not(this.activepageselector).hide();
+          } else {
+            $(this.$.pages.getDistributedNodes()).show();
+            $(this).addClass('splitview');
+            this.pageStack = [];
+          }
+        },
+        launch: function() {
+          if (this.accesstoken.length > 0 && this.instanceurl.length > 0) {
+            SFDC.launch({
+                accessToken: this.accesstoken,
+                instanceUrl: this.instanceurl
+            });
+          }
+        },
+        accesstokenChanged: function() {
+          this.launch();
+        },
+        instanceurlChanged: function() {
+          this.launch();
+        },
+        multipageChanged: function() {
+          this.arrangePages();
+        },
+        activepageselectorChanged: function(oldVal, newVal) {
+          if (this.multipage) {
+            var reverse = false;
+            if (this.pageStack.length > 0 &&
+               this.pageStack[this.pageStack.length - 1] === this.activepageselector) {
+              reverse = true;
+              this.pageStack.pop();
+            }
+            this.navigate(this.pages.filter(oldVal), this.pages.filter(this.activepageselector), reverse);
+            if (!reverse) this.pageStack.push(oldVal);
+          }
+        },
+        navigateback: function(e) {
+          this.activepageselector = this.pageStack[this.pageStack.length - 1];
+          e.stopPropagation();
+        },
+        navigate: function(source, target, reverse) {
+          /*var width = source.parent().width();
+          var sourceAnimation = document.createElement('polymer-translate');
+          $(sourceAnimation).appendTo(this.shadowRoot)
+          .on('animation-end', function() {
+            source.hide();
+            this.parentNode.removeChild(this);
+          });
+          sourceAnimation.target = source[0];
+          sourceAnimation.fromX = 0;
+          sourceAnimation.toX = reverse ? width : -1*width;
+          sourceAnimation.autoplay = true;
+          sourceAnimation.duration = 0.3;
+
+          var targetAnimation = document.createElement('polymer-translate');
+          $(targetAnimation).appendTo(this.shadowRoot)
+          .on('animation-start', function() {
+            target.show();
+          })
+          .on('animation-end', function() {
+            this.parentNode.removeChild(this);
+          });
+          targetAnimation.target = target[0];
+          targetAnimation.fromX = reverse ? -1*width : width;
+          targetAnimation.toX = 0;
+          targetAnimation.autoplay = true;
+          targetAnimation.duration = 0.3;*/
+
+          var sourceFinalPos = (reverse ? 1 : -1) * source.parent().width();
+          source.slideOut('X', sourceFinalPos, function() {
+            source.hide();
+          });
+          var targetInitialPos = (reverse ? -1 : 1) * target.parent().width();
+          target.slideIn('X', targetInitialPos, 0);
+          target.show();
+          //source.changePage(target.show(), reverse, function() { source.hide(); });
+        }
+      });
+    })();
+  </script>
+</polymer-element>

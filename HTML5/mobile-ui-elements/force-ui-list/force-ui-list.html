@@ -1,0 +1,25 @@
+<link rel="import" href="../force-data-collection/force-data-collection.html">
+<link rel="import" href="../../bower_components/polymer-elements/polymer-selector/polymer-selector.html">
+<polymer-element name="force-ui-list" attributes="multi sobject query querytype selectedid">
+  <template>
+    <force-data-collection id="listsource" sobject="{{sobject}}" querytype="{{querytype}}" query="{{query}}"></force-data-collection>
+    <ratchet-ui-list id="list" models="{{$.listsource.collection.models}}" selectedid="{{selectedid}}"></ratchet-ui-list>
+  </template>
+  <script type="text/javascript">
+  Polymer('force-ui-list', {
+    selectedid: ''
+  });
+  </script>
+</polymer-element>
+
+<polymer-element name="ratchet-ui-list" attributes="models, selectedid" noscript>
+  <template>
+      <ul class="list">
+        <polymer-selector multi="{{multi}}" selected="{{selectedid}}">
+        <template repeat="{{models}}">
+          <li name="{{attributes.Id}}" class="sf-list-item">{{attributes.Name}}</li>
+        </template>
+        </polymer-selector>
+      </ul>
+  </template>
+</polymer-element>
