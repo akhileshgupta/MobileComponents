@@ -17,22 +17,22 @@
         <!-- endbuild -->
 
         <!-- Place your HTML imports here -->
-        <link rel="import" href="mobile-ui-elements/force-app/force-app.html">
+        <link rel="import" href="mobile-ui-elements/force-ui-app/force-ui-app.html">
         <link rel="import" href="mobile-ui-elements/force-ui-list/force-ui-list.html">
         <link rel="import" href="mobile-ui-elements/force-ui-detail/force-ui-detail.html">
     </head>
     <body>
         <polymer-element name="mobile-app">
             <template>
-                <force-app id="force_app" multipage="true" accesstoken="{{accesstoken}}" instanceurl="{{instanceurl}}">
+                <force-ui-app id="force_app" multipage="true" accesstoken="{{accesstoken}}" instanceurl="{{instanceurl}}">
                     <force-ui-list id="force_ui_list" class="page content" on-polymer-select="showDetail"></force-ui-list>
                     <force-ui-detail flex id="force_ui_detail" recordid="{{$.force_ui_list.selectedid}}" class="page content"></force-ui-detail>
-                </force-app>
+                </force-ui-app>
             </template>
             <script type="text/javascript">
               Polymer('mobile-app', {
-                accesstoken: '00DU0000000Hb57!AR0AQNzFJO60hTolVWxyUySoRwixL4dnSUsP4zw7HZ4YFoHKUWt8k9iPg1KNNwnKGRt_DTuw2AlE8BBPYYCKG30.WsKV0YcD',
-                instanceurl: 'https://na12.salesforce.com',
+                accesstoken: '',
+                instanceurl: '',
                 showDetail: function(e, detail) {
                     if (detail.isSelected) this.$.force_app.activepageselector = '#force_ui_detail';
                 }
