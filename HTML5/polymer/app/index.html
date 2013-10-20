@@ -26,7 +26,7 @@
             <template>
                 <force-ui-app id="force_app" multipage="true" accesstoken="{{accesstoken}}" instanceurl="{{instanceurl}}">
                     <force-ui-list id="force_ui_list" class="page content" on-polymer-select="showDetail"></force-ui-list>
-                    <force-ui-detail flex id="force_ui_detail" recordid="{{$.force_ui_list.selectedid}}" class="page content"></force-ui-detail>
+                    <force-ui-detail flex id="force_ui_detail" recordid="{{$.force_ui_list.selected}}" class="page content"></force-ui-detail>
                 </force-ui-app>
             </template>
             <script type="text/javascript">
