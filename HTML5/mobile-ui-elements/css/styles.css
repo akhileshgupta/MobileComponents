@@ -172,13 +172,13 @@ label {
     border: none;
     color: #969899; }
 
-#edit .sf-layout-item-value span {
+.edit .sf-layout-item-value span {
   display: -webkit-box;
   margin: 0.1em;
 }
-#edit .sf-layout-item-value span:first-child {
+.edit .sf-layout-item-value span:first-child {
   margin-left: 0; }
-#edit .sf-layout-item-value span:last-child {
+.edit .sf-layout-item-value span:last-child {
   -webkit-box-flex: 1.0; }
 
 .sf-layout-item-value,
@@ -344,7 +344,7 @@ input[type="radio"] {
   font-weight: bold;
 }
 
-#edit .ui-content,
+.edit .ui-content,
 #detail .ui-content {
   padding: 0px;
 }
