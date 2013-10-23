@@ -70,7 +70,7 @@
     (function() {
       Polymer('force-ui-app', {
         multipage: false,
-        startpage: '.page:first-child',
+        startpage: '.page:first',
         pageStack: [],
         hideheader: false,
         disablestyles: false,
@@ -81,16 +81,18 @@
           this.async(this.arrangePages);
         },
         get pages() {
-          return $(this.$.pages.getDistributedNodes()).filter('.page');
+          return $(this.$.pages.getDistributedNodes()).filter('.page').toArray();
         },
         arrangePages: function() {
+          var $pages = $(this.pages);
+
           if (this.multipage) {
             $(this).removeClass('splitview');
-            this.activepage = this.pages.filter(this.startpage).show();
-            this.pages.not(this.startpage).hide();
+            this.activepage = $pages.filter(this.startpage).show()[0];
+            $pages.not(this.startpage).hide();
             this.pageStack = [];
           } else {
-            $(this.$.pages.getDistributedNodes()).show();
+            $pages.show();
             $(this).addClass('splitview');
           }
         },
@@ -107,12 +109,11 @@
           }
         },
         navigateTo: function(target) {
-          var that = this;
           if (this.multipage) {
-            target = this.pages.filter(target);
-            if (target.length == 1) {
+            var $target = $(this.pages).filter(target);
+            if ($target.length == 1) {
               this.pageStack.push(this.activepage);
-              navigate(this, this.activepage, target);
+              navigate(this, this.activepage, $target[0]);
             }
           }
         }
@@ -146,23 +147,27 @@
           targetAnimation.autoplay = true;
           targetAnimation.duration = 0.3;*/
 
+          // Create jquery versions
+          var $source = $(source);
+          var $target = $(target);
+
           var eventDetails = {
-            from: source[0],
-            to: target[0]
+            from: $source[0],
+            to: $target[0]
           };
 
           parent.fire('navigation-start', eventDetails);
-          var sourceFinalPos = (reverse ? 1 : -1) * source.parent().width();
-          source.slideOut('X', sourceFinalPos, function() {
-            source.hide();
+          var sourceFinalPos = (reverse ? 1 : -1) * $source.parent().width();
+          $source.slideOut('X', sourceFinalPos, function() {
+            $source.hide();
           });
-          var targetInitialPos = (reverse ? -1 : 1) * target.parent().width();
-          target.slideIn('X', targetInitialPos, 0, function() {
-            parent.activepage = target;
+          var targetInitialPos = (reverse ? -1 : 1) * $target.parent().width();
+          $target.slideIn('X', targetInitialPos, 0, function() {
+            parent.activepage = $target[0];
             parent.fire('navigation-end', eventDetails);
           });
-          target.show();
-          //source.changePage(target.show(), reverse, function() { source.hide(); });
+          $target.show();
+          //$source.changePage($target.show(), reverse, function() { $source.hide(); });
         }
     })();
   </script>
