@@ -11,9 +11,8 @@
     launch: Initiate the launch to start rendering all the other child elements. Cannot be done until the accesstoken and instanceurl are provided.
 -->
 <polymer-element name="force-app" attributes="accesstoken, instanceurl">
-  <script src="../js/libs-backbone.min.js"></script>
-  <script src="../js/jquery-2.0.3.js"></script>
-  <script src="../js/underscore-1.4.4.min.js"></script>
+  <script src="../js/jquery-2.0.3.min.js"></script>
+  <script src="../js/underscore-1.5.2.min.js"></script>
   <script src="../js/backbone-1.0.0.js"></script>
   <script src="../js/forcetk.mobilesdk.js"></script>
   <script src="../js/smartsync.js"></script>
@@ -23,7 +22,7 @@
     (function() {
       Polymer('force-app', {
         accesstoken: '',
-        instanceurl: '',
+        instanceurl: 'https://' + window.location.hostname,
         //applyAuthorStyles: true,
         //resetStyleInheritance: true,
         ready: function() {

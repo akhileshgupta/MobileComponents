@@ -1,37 +1,32 @@
-# Mobile UI Elements #
+# Mobile UI Elements (BETA) #
 
-Mobile UI Elements is a free, open-source Force.com (unsupported) library to simplify the development of mobile apps. The framework contains lightweight Javascript framework that generate cross-platform HTML5 output that runs well on smartphones and tablets. The apps can be deployed in the browser or embedded inside Container from the Salesforce Mobile SDK. 
+Mobile UI Elements is a free, open-source Force.com (unsupported) library to simplify the development of mobile apps. The library, based on the [Google’s Polymer framework](http://www.polymer-project.org), provides the fundamental building blocks for creating HTML5 apps that run well on smartphones and tablets. The elements can be mixed together to create fairly complex force.com applications and the apps can be deployed in the browser or embedded inside Container from the Salesforce Mobile SDK.
 Note: The library is still in heavy development and is missing certain features as well as complete documentation.
 This document is intended to introduce you to the app's architecture and design and make it as easy as possible for you to jump in, run it, and start contributing.
 
 - What is it?
 - Available UI Elements
-- Sample Apps
 - Third-party Code
 - Mobile UI Elements License
 
 ## What is it? ##
-Mobile UI Elements is a simple javascript based library that extends the standard HTML tags to generate the Saleforce Metadata driven UI for your mobile application. It's built on top of Mobile SDK 2.0 and extends the open source frameworks such as Backbone.js and Google Polymer. It also comes with some stylesheets, providing the responsive design for tablets and phones, and Sample Apps to showcase how to use them in a real application. You can easily combine and extend this library to develop UI specific to your application.
+Mobile UI Elements is a set of web components built using [Google’s Polymer framework](http://www.polymer-project.org). The library utilizes the future of HTML5 standards, such as Custom Elements, ShadowDOM, Templates, HTML imports etc., to provide a set of new HTML tags that generate the Saleforce driven UI for your mobile application. It's built on top of [Salesforce Mobile SDK 2.0](http://www2.developerforce.com/en/mobile/services/mobile-sdk) and extends the open source frameworks such as [Backbone.js](http://backbonejs.org/) and [Undescore.js](http://underscorejs.org/) and [JQuery](http://jquery.com/). It also comes with some stylesheets, providing the responsive design for tablets and phones, and Sample Apps to showcase how to use them in a real application. You can easily combine and extend this library to develop UI specific to your application.
 
 ## Available UI Elements ##
-1. **List **: List Element provides a quick and easy way to render a record list for any sobject. One can easily manage the behavior of the element by using the various attributes or the javascript hooks on this element. Supported attributes include: sf-query, sf-sobject, sf-template. Eg. `<div sf-role="list" sf-sobject="Account"></div>`
-2. **Detail **: Detail Element provides a quick and easy way to render the details for any sobject. One can easily manage the behavior of the element by using the various attributes or the javascript hooks on this element. Supported attributes include: sf-sobject, sf-recordid, sf-hasrecordtypes, sf-recordtypeid, sf-template. Eg. `<div sf-role="detail" sf-sobject="Account" sf-recordid="001000000000AAA"></div>`
-3. **Form **: Form Element provides a quick and easy way to render a form for modifying/creating  any sobject record. One can easily manage the behavior of the element by using the various attributes or the javascript hooks on this element. Supported attributes include: sf-role, sf-sobject, sf-recordid, sf-hasrecordtypes, sf-recordtypeid, sf-template. Eg. `<div sf-role="edit" sf-sobject="Account" sf-recordid="001000000000AAA"></div>`
+1. **force-ui-app **: force-ui-app element is a top level UI element that extends the force-app element and also provides the basic styling and structure for the application. This element also contains the polymer-flex-layout element to enable flexible sections on the page, esp. in single page view with split view panels. Supported attributes include: accesstoken, instanceurl, multipage, startpage, hideheader. Eg. when using inside Visualforce: `<force-ui-app accesstoken="{!$Api.Session_ID}"></force-ui-app>`
+2. **force-ui-list **: force-ui-list element enables the rendering of list of records for any sobject. The element can be configured using various attributes, such as query, sobject and querytype, to show specific set of records. This element should always be a child of force-ui-app element. Supported attributes include: query, sobject, querytype. Eg. `<force-ui-list sobject="Account" querytype="mru"></force-ui-list>`
+3. **force-ui-detail **: force-ui-detail element provides a quick and easy way to render full view of a salesforce record. This element can auto detect the record's relevant page layout and renders the details accordingly. The element can be configured by using the various attributes, such as sobject, recordid etc, to render layout of a particular record. This element should always be a child of force-ui-app element. Supported attributes include: sobject, recordid, hasrecordtypes, recordtypeid. Eg. `<force-ui-detail sobject="Account" recordid="001000000000AAA"></force-ui-detail>`
 
 
-## Sample Apps ##
-- iOS-Hybrid: A Hybrid sample app to demonstrate the use of Mobile UI elements inside Mobile SDK.
-- local: A simple HTML file that can be run locally on the browser to easily test and learn the UI Elements.
- 
 ## Third-party Code ##
 
 This library makes use of a number of third-party components:
 
+- [Polymer](http://www.polymer-project.org/), a JavaScript library to add new extensions and features to modern HTML5 browsers. It's built on top of Web Components, and designed to leverage the evolving web platform on modern browsers.
 - [jQuery](http://jquery.com), the JavaScript library to make it easy to write javascript.
 - [Backbonejs](http://backbonejs.org), a JavaScript library providing the model–view–presenter (MVP) application design paradigm.
-- [Google Polymer](http://www.polymer-project.org/), a JavaScript library to add new extensions and features to modern HTML5 browsers.
+- [Underscorejs](http://underscorejs.org/), a utility-belt library for JavaScript.
 - [Ratchet](http://maker.github.io/ratchet), Prototype iPhone apps with simple HTML, CSS, and JS components.
-- [jQuery Mobile](http://jquerymobile.com), Touch-Optimized Web Framework for Smartphones & Tablets.
 
 
 ## Mobile UI Elements License ##
