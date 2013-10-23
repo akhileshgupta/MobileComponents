@@ -1,10 +1,3 @@
-/*
-    This component wraps the SmartSync Force.SObject into a polymer component.
-    Why: a) Auto manages the offline store for caching.
-    b) Provides a simpler DOM based interface to interact with Smartsync SObject Model.
-    c) Allows other polymer components to easily comsume smartsync.
-*/
-
 (function($, SFDC) {
 
     var SObjectInfoManager = (function() {

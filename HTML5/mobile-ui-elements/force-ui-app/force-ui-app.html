@@ -1,32 +1,40 @@
 <!--
     force-ui-app element is a top level UI element that extends the force-app element and also provides the basic styling and structure for the application. This element also contains the polymer-flex-layout element to enable flexible sections on the page, esp. in single page view with split view panels.
     Why: a) Manages all the UI stylesheets.
-    b) Provides simple header and content location for the app. Also provides way to create splitview or multipage app.
+    b) Provides simple header and content location for the app.
+    c) Provides way to create splitview or multipage app with built-in navigation.
+
+    @extends force-app
 
     @attributes:
-    multipage:
-    activepageselector:
-    hideheader:
+    multipage: (Optional) Default: false. When true, force-ui-app shows only one direct children (class="page") at a time and allows navigation to other children.
+    hideheader: (Optional) Default: false. Show/Hide default header on the page.
+    startpage: (Optional) Default: first direct child[class="page"].
+
+    @properties:
+    pages: Returns all the direct child elements of the force-ui-app with class as "page".
 
     @content sections:
     header: Selects all child elements of nodeType header.
     content: Selects all the rest of child elements.
 
     @methods:
-    navigate:
-    navigateback:
+    navigateTo: Navigates the user from one page element to another page element.
+      @param target, Selector or dom element to navigate the user to.
+    navigateBack: Navigates the user to the last page element in the stack.
+
+    @events:
+    navigation-start: Thrown before starting the navigation from one page to another.
+    navigation-end: Thrown after the navigation animation ends.
 -->
 <link rel="import" href="../force-app/force-app.html">
-<polymer-element name="force-ui-app" attributes="multipage, activepageselector, hideheader" extends="force-app">
+<polymer-element name="force-ui-app" attributes="multipage, startpage, hideheader" extends="force-app">
   <script src="../js/jq-slide.js"></script>
   <template>
     <link rel="stylesheet" href="../css/ratchet.css"/>
     <link rel="stylesheet" href="../css/responsive.css"/>
     <link rel="stylesheet" href="../css/styles.css"/>
     <style>
-      [class*="bar-"], .content {
-        position: absolute;
-      }
       @host {
         :scope {
           display: block;
@@ -41,12 +49,15 @@
           position: static;
           margin-top: 44px;
         }
+        header[class*="bar-"], .content {
+          position: absolute;
+        }
       }
     </style>
     <template if="{{!hideheader}}">
       <header class="bar-title">
         <template if="{{multipage && pageStack.length > 0}}">
-          <a class="button-prev" on-click="navigateback">Previous</a>
+          <a class="button-prev" on-click="navigateBack">Previous</a>
         </template>
         <content id="header" select="header">
       </header>
@@ -59,7 +70,7 @@
     (function() {
       Polymer('force-ui-app', {
         multipage: false,
-        activepageselector: '.page:first-child',
+        startpage: '.page:first-child',
         pageStack: [],
         hideheader: false,
         disablestyles: false,
@@ -75,34 +86,39 @@
         arrangePages: function() {
           if (this.multipage) {
             $(this).removeClass('splitview');
-            this.pages.filter(this.activepageselector).show();
-            this.pages.not(this.activepageselector).hide();
+            this.activepage = this.pages.filter(this.startpage).show();
+            this.pages.not(this.startpage).hide();
+            this.pageStack = [];
           } else {
             $(this.$.pages.getDistributedNodes()).show();
             $(this).addClass('splitview');
-            this.pageStack = [];
           }
         },
         multipageChanged: function() {
           this.arrangePages();
         },
-        activepageselectorChanged: function(oldVal, newVal) {
+        startpageChanged: function(oldVal, newVal) {
+          this.arrangePages();
+        },
+        navigateBack: function(e) {
           if (this.multipage) {
-            var reverse = false;
-            if (this.pageStack.length > 0 &&
-               this.pageStack[this.pageStack.length - 1] === this.activepageselector) {
-              reverse = true;
-              this.pageStack.pop();
-            }
-            this.navigate(this.pages.filter(oldVal), this.pages.filter(this.activepageselector), reverse);
-            if (!reverse) this.pageStack.push(oldVal);
+            navigate(this, this.activepage, this.pageStack.pop(), true);
+            if (e) e.stopPropagation();
           }
         },
-        navigateback: function(e) {
-          this.activepageselector = this.pageStack[this.pageStack.length - 1];
-          e.stopPropagation();
-        },
-        navigate: function(source, target, reverse) {
+        navigateTo: function(target) {
+          var that = this;
+          if (this.multipage) {
+            target = this.pages.filter(target);
+            if (target.length == 1) {
+              this.pageStack.push(this.activepage);
+              navigate(this, this.activepage, target);
+            }
+          }
+        }
+      });
+
+      function navigate(parent, source, target, reverse) {
           /*var width = source.parent().width();
           var sourceAnimation = document.createElement('polymer-translate');
           $(sourceAnimation).appendTo(this.shadowRoot)
@@ -130,16 +146,24 @@
           targetAnimation.autoplay = true;
           targetAnimation.duration = 0.3;*/
 
+          var eventDetails = {
+            from: source[0],
+            to: target[0]
+          };
+
+          parent.fire('navigation-start', eventDetails);
           var sourceFinalPos = (reverse ? 1 : -1) * source.parent().width();
           source.slideOut('X', sourceFinalPos, function() {
             source.hide();
           });
           var targetInitialPos = (reverse ? -1 : 1) * target.parent().width();
-          target.slideIn('X', targetInitialPos, 0);
+          target.slideIn('X', targetInitialPos, 0, function() {
+            parent.activepage = target;
+            parent.fire('navigation-end', eventDetails);
+          });
           target.show();
           //source.changePage(target.show(), reverse, function() { source.hide(); });
         }
-      });
     })();
   </script>
 </polymer-element>

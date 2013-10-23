@@ -17,7 +17,7 @@
         <!-- endbuild -->
 
         <!-- Place your HTML imports here -->
-        <link rel="import" href="mobile-ui-elements/force-ui-elements.html">
+        <link rel="import" href="mobile-ui-elements/mobile-ui-elements.html">
     </head>
     <body>
         <polymer-element name="mobile-app">
@@ -32,7 +32,7 @@
                 accesstoken: '',
                 instanceurl: '',
                 showDetail: function(e, detail) {
-                    if (detail.isSelected) this.$.force_app.activepageselector = '#force_ui_detail';
+                    if (detail.isSelected) this.$.force_app.navigateTo('#force_ui_detail');
                 }
               });
             </script>

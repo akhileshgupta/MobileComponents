@@ -5,9 +5,9 @@
     c) Supports for read and edit layout modes.
 
     @attributes:
-    hasrecordtypes: (Optional) Default: false.
-    recordtypeid: (Optional) Default: None.
-    foredit: (Optional) Default: false.
+    hasrecordtypes: (Optional) Default: false. Mark this as true, if the sobject has multiple record types.
+    recordtypeid: (Optional) Default: None. If provided, the layout associated with this recordtypeid is rendered.
+    foredit: (Optional) Default: false. If true, render the edit version of the layout.
 -->
 <link rel="import" href="../force-sobject/force-sobject.html">
 <polymer-element name="force-ui-detail" attributes="hasrecordtypes, recordtypeid, foredit" extends="force-sobject">
