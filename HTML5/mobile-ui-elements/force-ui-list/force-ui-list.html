@@ -1,24 +1,13 @@
-<link rel="import" href="../force-data-collection/force-data-collection.html">
-<link rel="import" href="../../bower_components/polymer-elements/polymer-selector/polymer-selector.html">
-<polymer-element name="force-selector-list" attributes="sobject query querytype selected" extends="polymer-selector">
-  <template>
-    <force-data-collection id="listsource" sobject="{{sobject}}" querytype="{{querytype}}" query="{{query}}"></force-data-collection>
-    <shadow></shadow>
-  </template>
-  <script type="text/javascript">
-    Polymer('force-selector-list', {
-      get models() {
-        return this.$.listsource.collection.models;
-      }
-    })
-  </script>
-</polymer-element>
-
+<!--
+    force-ui-list element enables the rendering of simple list of salesforce records driven by a force-sobject-collection. It extends the force-selector-list element to allow all the fetching of records and to detect record selection based on user's tap actions.
+    Why: a) Renders the list of records within a Force.SObjectCollection as an Unordered List.
+-->
+<link rel="import" href="../force-selector-list/force-selector-list.html">
 <polymer-element name="force-ui-list" extends="force-selector-list" noscript>
   <template>
       <shadow></shadow>
       <ul id="list" class="list">
-        <template repeat="{{models}}">
+        <template repeat="{{collection.models}}">
             <li name="{{attributes.Id}}">{{attributes.Name}}</li>
         </template>
       </ul>

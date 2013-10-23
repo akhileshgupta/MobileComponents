@@ -1,20 +1,7 @@
-/*
-    This component wraps the SmartSync Force.SObjectCollection into a polymer component.
-    Why: a) Auto manages the offline store for caching.
-    b) Provides a simple DOM based interface to interact with Smartsync.
-    c) Allows other polymer components to easily comsume smartsync.
-*/
-
 "use strict";
 
 (function(SFDC) {
 
-    /* TBD: Need to figure out what should we allow user to change and what attributes cannot be changed once the view is instantiated */
-    // ListView Class to render a list view of salesforce records
-    // list View can be configured using following params:
-    // SObject: (Required) Type of sobject on which you want to render a list
-    // query: (Optional) SOQL/SOSL/SmartSQL statement to fetch the records.
-    // querytype: Type of query (mru, soql, sosl, cache). Required if query is specified.
     var viewProps = {
         sobject: "Account",
         query: "",
@@ -50,7 +37,7 @@
         return SFDC.isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY;
     }
 
-    Polymer('force-data-collection', _.extend({}, viewProps, {
+    Polymer('force-sobject-collection', _.extend({}, viewProps, {
         ready: function() {
             this.collection = new (Force.SObjectCollection.extend({
                 cache: SFDC.dataStore,

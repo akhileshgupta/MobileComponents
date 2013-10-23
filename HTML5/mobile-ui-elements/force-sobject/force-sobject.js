@@ -1,17 +1,5 @@
-/*
-    This component wraps the SmartSync Force.SObject into a polymer component.
-    Why: a) Auto manages the offline store for caching.
-    b) Provides a simpler DOM based interface to interact with Smartsync SObject Model.
-    c) Allows other polymer components to easily comsume smartsync.
-*/
 (function(SFDC) {
 
-    /* TBD: Need to figure out what should we allow user to change and what attributes cannot be changed once the view is instantiated */
-    // ListView Class to render a list view of salesforce records
-    // list View can be configured using following params:
-    // SObject: (Required) Type of sobject on which you want to render a list
-    // query: (Optional) SOQL/SOSL/SmartSQL statement to fetch the records.
-    // querytype: Type of query (mru, soql, sosl, cache). Required if query is specified.
     var viewProps = {
         sobject: "Account",
         recordid: "",

@@ -98,13 +98,24 @@
                 Object.defineProperty(_self, prop, {
                     get: function() {
                         var fieldInfo = fieldInfos[prop];
-                        var value = model.get(prop)
+                        var value = model.get(prop);
 
                         if (fieldInfo && fieldInfo.type)
                             return dateTimeToString(fieldInfo.type, value);
                         else return value;
                     },
-                    set: function(val) { model.set(prop, val); },
+                    set: function(val) {
+                        var fieldInfo = fieldInfos[prop];
+
+                        if (fieldInfo && fieldInfo.type && fieldInfo.type == 'base64') {
+                            var reader  = new FileReader();
+                            reader.onloadend = function () {
+                                model.set(prop, reader.result);
+                            }
+                            if (file) reader.readAsDataURL(file);
+                        }
+                        else model.set(prop, val);
+                    },
                     enumerable: true
                 });
             });
@@ -298,6 +309,7 @@
                  case "time": return "time";
                  case "url": return "url";
                  case "email": return "email";
+                 case "base64": return "file";
                  default: return "text";
             }
         }
