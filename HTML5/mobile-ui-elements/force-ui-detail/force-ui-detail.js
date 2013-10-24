@@ -212,10 +212,6 @@
         }
     }
 
-    var cacheMode = function() {
-        return SFDC.isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY;
-    }
-
     // Utility method to ensure that input object is an array.
     // If not, wraps the input object into array.
     var modArray = function(obj) {

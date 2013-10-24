@@ -8,15 +8,11 @@
         /* autosave: false */ // Could add this property to allow auto save of model whenever it changes
     };
 
-    var cacheMode = function() {
-        return SFDC.isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY;
-    }
-
     Polymer('force-sobject', _.extend({}, viewProps, {
         init: function() {
             this.model = new (Force.SObject.extend({
                 cache: SFDC.dataStore, //FIXME: Create separate data store for each sobjectype
-                cacheMode: cacheMode,
+                cacheMode: SFDC.cacheMode,
                 sobjectType: this.sobject,
                 fieldlist: this.fieldlist,
                 idAttribute: this.idfield

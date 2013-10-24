@@ -37,7 +37,7 @@
         }
     }
 
-    var cacheMode = function() {
+    SFDC.cacheMode = function() {
         return SFDC.isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY;
     }
 

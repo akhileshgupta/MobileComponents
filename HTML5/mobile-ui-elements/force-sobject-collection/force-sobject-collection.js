@@ -33,15 +33,11 @@
         return null;
     }
 
-    var cacheMode = function() {
-        return SFDC.isOnline() ? Force.CACHE_MODE.SERVER_FIRST : Force.CACHE_MODE.CACHE_ONLY;
-    }
-
     Polymer('force-sobject-collection', _.extend({}, viewProps, {
         ready: function() {
             this.collection = new (Force.SObjectCollection.extend({
                 cache: SFDC.dataStore,
-                cacheMode: cacheMode,
+                cacheMode: SFDC.cacheMode,
                 config: generateConfig(_.pick(this, _.keys(viewProps)))
             }));
 

@@ -5,7 +5,7 @@
 
     @attributes:
     accesstoken: (Required) Session ID or OAuth access token to make API calls to Salesforce.
-    instanceurl: (Required) Host instance URL of the salesforce org to make API calls. Eg. https://na1.salesforce.com
+    instanceurl: (Optional) Default: Host url of current application. Host instance URL of the salesforce org to make API calls. Eg. https://na1.salesforce.com
 
     @methods:
     launch: Initiate the launch to start rendering all the other child elements. Cannot be done until the accesstoken and instanceurl are provided.

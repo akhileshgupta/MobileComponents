@@ -9,7 +9,7 @@
     @attributes:
     multipage: (Optional) Default: false. When true, force-ui-app shows only one direct children (class="page") at a time and allows navigation to other children.
     hideheader: (Optional) Default: false. Show/Hide default header on the page.
-    startpage: (Optional) Default: first direct child[class="page"].
+    startpage: (Optional) Default: first direct child element with class="page". Instance of the DOM element, with class="page", that should be shown first when the app loads.
 
     @properties:
     pages: Returns all the direct child elements of the force-ui-app with class as "page".
@@ -28,6 +28,7 @@
     navigation-end: Thrown after the navigation animation ends.
 -->
 <link rel="import" href="../force-app/force-app.html">
+<link rel="import" href="../../dependencies/polymer-elements/polymer-flex-layout/polymer-flex-layout.html">
 <polymer-element name="force-ui-app" attributes="multipage, startpage, hideheader" extends="force-app">
   <script src="../js/jq-slide.js"></script>
   <template>

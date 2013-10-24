@@ -7,7 +7,7 @@
     @attributes:
     sobject: (Required) Type of sobject on which you want to render a list
     query: (Optional) SOQL/SOSL/SmartSQL statement to fetch the records. Required when querytype is soql, sosl or cache.
-    querytype: Type of query (mru, soql, sosl, cache). Required if query is specified.
+    querytype: (Optional) Default: mru. Type of query (mru, soql, sosl, cache). Required if query attribute is specified.
 
     @methods:
     fetch: Initiates the fetching of records from the relevant data store (server/offline store).
